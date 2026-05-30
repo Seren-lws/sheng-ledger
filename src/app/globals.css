@@ -50,6 +50,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
 /* 禁止 iOS 双击缩放 */
 button,
 input,

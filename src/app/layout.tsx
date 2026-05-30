@@ -33,7 +33,7 @@ export default function RootLayout({
       </head>
       <body>
         <div className="flex flex-col h-full max-w-md mx-auto relative">
-          <main className="flex-1 overflow-y-auto pb-16">
+          <main className="flex-1 overflow-hidden">
             {children}
           </main>
           <BottomNav />
