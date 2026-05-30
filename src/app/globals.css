@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  /* 基础色 */
+  --color-bg: #FAF8F5;
+  --color-card: #FFFFFF;
+  --color-text: #2D2D2D;
+  --color-text-muted: #9B9B9B;
+  --color-border: #EFEFEF;
+
+  /* 莫兰迪彩虹色系 */
+  --color-morandi-rose: #C4A09B;        /* 餐饮 */
+  --color-morandi-coral: #C9A88A;       /* 交通 */
+  --color-morandi-sand: #CBBEA6;        /* 住房 */
+  --color-morandi-olive: #A3AB8E;       /* 日用 */
+  --color-morandi-sage: #9FB5A3;        /* 购物 */
+  --color-morandi-mint: #8FB5B0;        /* 娱乐 */
+  --color-morandi-sky: #94ACBE;         /* 医疗 */
+  --color-morandi-lavender: #ADA8C6;    /* AI */
+  --color-morandi-pink: #B89EB5;        /* 其他 */
+
+  /* 功能色 */
+  --color-income: #8FB5A3;
+  --color-expense: #C4A09B;
+
+  /* 圆角 */
+  --radius-card: 16px;
+  --radius-btn: 12px;
+  --radius-tag: 8px;
+
+  /* 字体 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 禁止 iOS 双击缩放 */
+button,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
