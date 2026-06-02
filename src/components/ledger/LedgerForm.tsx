@@ -1,41 +1,32 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import dayjs from 'dayjs'
-import { Check, Calendar, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { TransactionType } from '@/lib/types'
 import { useCategories } from '@/hooks/useCategories'
 import { useTags } from '@/hooks/useTags'
 import { useAccounts } from '@/hooks/useAccounts'
-import SmartInput from './SmartInput'
 import TypeToggle from './TypeToggle'
 import CategoryPicker from './CategoryPicker'
+import AccountSelector from './AccountSelector'
+import TagRow from './TagRow'
+import TagEditSheet from './TagEditSheet'
 import AmountDisplay from './AmountDisplay'
 import NumPad from './NumPad'
-import AccountSelector from './AccountSelector'
+import DateQuickPicker from './DateQuickPicker'
 import DateSheet from './DateSheet'
-import TagSheet from './TagSheet'
+import SmartInput from './SmartInput'
 
 function evaluate(expr: string): number {
-  const n = parseFloat(expr.replace(/[^0-9.]/g, ''))
+  const clean = expr.replace(/[+\-]$/, '')
+  const m = clean.match(/^(\d+\.?\d*)([+\-])(\d+\.?\d*)$/)
+  if (m) {
+    const a = parseFloat(m[1]), b = parseFloat(m[3])
+    const r = m[2] === '+' ? a + b : a - b
+    return Math.max(0, r)
+  }
+  const n = parseFloat(clean)
   return isNaN(n) ? 0 : Math.max(0, n)
-}
-
-function StepLabel({ n, label, right }: { n: number; label: string; right?: string }) {
-  return (
-    <div className="flex items-center justify-between px-4 pt-4 pb-2">
-      <div className="flex items-center gap-2">
-        <span
-          className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-          style={{ background: 'var(--color-morandi-rose)' }}
-        >
-          {n}
-        </span>
-        <span className="text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-      </div>
-      {right && <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{right}</span>}
-    </div>
-  )
 }
 
 export default function LedgerForm() {
@@ -46,8 +37,9 @@ export default function LedgerForm() {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'))
+  const [showDateQuick, setShowDateQuick] = useState(false)
   const [showDateSheet, setShowDateSheet] = useState(false)
-  const [showTagSheet, setShowTagSheet] = useState(false)
+  const [showTagEdit, setShowTagEdit] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -71,20 +63,45 @@ export default function LedgerForm() {
 
   const selectedCategory = categories.find(c => c.id === categoryId)
   const selectedAccount = accounts.find(a => a.id === accountId)
-  const tagNameMap = Object.fromEntries(tags.map(t => [t.id, t.name]))
+  const categoryColor = selectedCategory?.color ?? '#C4A09B'
 
-  // 账户余额 5/30 风格
-  const balanceLabel = selectedAccount
-    ? `${Number(selectedAccount.balance).toLocaleString()} ${selectedAccount.currency}`
-    : ''
+  const today = dayjs().format('YYYY-MM-DD')
+  const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+  const dayBefore = dayjs().subtract(2, 'day').format('YYYY-MM-DD')
+  const dateLabel =
+    date === today ? '今天'
+    : date === yesterday ? '昨天'
+    : date === dayBefore ? '前天'
+    : dayjs(date).format('M/D')
 
   function handleKey(key: string) {
+    if (key === 'done') { handleSubmit(); return }
+    if (key === 'date') { setShowDateQuick(p => !p); return }
     if (key === 'backspace') { setExpression(p => p.slice(0, -1)); return }
-    if (key === '.') {
-      setExpression(p => p.includes('.') ? p : (p === '' ? '0.' : p + '.'))
+
+    if (key === '+' || key === '-') {
+      setExpression(p => {
+        if (!p) return p
+        if (/[+\-]$/.test(p)) return p.slice(0, -1) + key   // replace trailing op
+        if (/\d[+\-]\d/.test(p)) return p                    // already has complete expr
+        return p + key
+      })
       return
     }
-    setExpression(p => p.length >= 10 ? p : p + key)
+
+    if (key === '.') {
+      setExpression(p => {
+        const lastOp = Math.max(p.lastIndexOf('+'), p.lastIndexOf('-'))
+        const segment = lastOp >= 0 ? p.slice(lastOp + 1) : p
+        if (segment.includes('.')) return p
+        if (p === '' || /[+\-]$/.test(p)) return p + '0.'
+        return p + '.'
+      })
+      return
+    }
+
+    // digit
+    setExpression(p => p.length >= 12 ? p : p + key)
   }
 
   function handleSmartParsed(result: { amount: string; tagIds: string[]; categoryId?: string }) {
@@ -144,98 +161,100 @@ export default function LedgerForm() {
     }
   }
 
-  const today = dayjs().format('YYYY-MM-DD')
-  const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
-  const dateLabel = date === today ? '今天' : date === yesterday ? '昨天' : dayjs(date).format('M月D日')
-
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      {/* 可滚动区域 */}
-      <div className="flex-1 overflow-y-auto pb-24">
-        <SmartInput tags={tags} categories={categories} onParsed={handleSmartParsed} />
 
+      {/* ── 上方可滚动区域 ── */}
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+
+        {/* 支出 / 收入 切换 */}
         <TypeToggle value={type} onChange={setType} />
 
-        {/* ① 分类 */}
-        <StepLabel n={1} label="选分类" />
+        {/* 分类横滑 */}
         <CategoryPicker categories={categories} selectedId={categoryId} onSelect={setCategoryId} />
 
-        {/* ② 金额 + 标签 */}
-        <StepLabel n={2} label="输金额·加标签" />
-        <AmountDisplay
-          expression={expression}
-          currency={selectedAccount?.currency ?? 'JPY'}
-          selectedTagIds={selectedTagIds}
-          tagNames={tagNameMap}
-          categoryColor={selectedCategory?.color}
-          onAddTag={() => setShowTagSheet(true)}
-          onRemoveTag={id => setSelectedTagIds(p => p.filter(x => x !== id))}
-        />
-        <NumPad onKey={handleKey} />
+        {/* 分隔线 */}
+        <div className="mx-4 my-2.5" style={{ height: '1px', background: 'var(--color-border)' }} />
 
-        {/* ③ 账户 */}
-        <StepLabel n={3} label="选账户" right={balanceLabel} />
-        <AccountSelector accounts={accounts} selectedId={accountId} onSelect={setAccountId} />
+        {/* 账户行 */}
+        <div className="flex items-center min-h-9 px-4 gap-2">
+          <span className="text-xs flex-shrink-0 w-7" style={{ color: 'var(--color-text-muted)' }}>账户</span>
+          <div className="flex-1 overflow-x-auto no-scrollbar">
+            <AccountSelector accounts={accounts} selectedId={accountId} onSelect={setAccountId} />
+          </div>
+        </div>
 
-        {/* 备注 + 日期 */}
-        <div className="px-4 pt-3 pb-1 flex gap-2">
-          <div
-            className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl"
-            style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}
-          >
-            <FileText size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-            <input
-              type="text"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="备注（可选）"
-              className="flex-1 text-xs bg-transparent outline-none"
-              style={{ color: 'var(--color-text)' }}
+        {/* 标签行 */}
+        <div className="flex items-start px-4 gap-2 py-1.5">
+          <span className="text-xs flex-shrink-0 w-7 pt-1.5" style={{ color: 'var(--color-text-muted)' }}>标签</span>
+          <div className="flex-1">
+            <TagRow
+              tags={tags}
+              selectedIds={selectedTagIds}
+              categoryColor={categoryColor}
+              onToggle={id => setSelectedTagIds(p =>
+                p.includes(id) ? p.filter(x => x !== id) : [...p, id]
+              )}
+              onEdit={() => setShowTagEdit(true)}
             />
           </div>
-          <button
-            onClick={() => setShowDateSheet(true)}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs flex-shrink-0"
-            style={{ background: 'var(--color-card)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}
-          >
-            <Calendar size={13} />
-            {dateLabel}
-          </button>
         </div>
+
+        {/* 备注行 */}
+        <div className="flex items-center px-4 gap-2 py-1.5">
+          <span className="text-xs flex-shrink-0 w-7" style={{ color: 'var(--color-text-muted)' }}>备注</span>
+          <input
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="添加备注..."
+            className="flex-1 text-sm bg-transparent outline-none"
+            style={{ color: 'var(--color-text)' }}
+          />
+        </div>
+
+        {/* AI 快捷输入（紧凑） */}
+        <SmartInput tags={tags} categories={categories} onParsed={handleSmartParsed} />
+
+        {/* 底部留白，确保内容不被金额区遮挡 */}
+        <div className="h-3" />
       </div>
 
-      {/* 固定底部：记一笔按钮，在 BottomNav 上方 */}
-      <div
-        className="fixed bottom-14 left-1/2 -translate-x-1/2 w-full max-w-md px-4 py-2"
-        style={{ background: 'linear-gradient(to top, var(--color-bg) 70%, transparent)' }}
-      >
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || evaluate(expression) <= 0}
-          className="w-full h-14 rounded-2xl text-white font-semibold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-          style={{
-            background: success
-              ? 'var(--color-morandi-mint)'
-              : evaluate(expression) > 0
-                ? selectedCategory?.color ?? 'var(--color-morandi-rose)'
-                : 'var(--color-border)',
-            color: evaluate(expression) > 0 ? 'white' : 'var(--color-text-muted)',
-          }}
-        >
-          {success ? <><Check size={18} /> 已记录</> : '记一笔'}
-        </button>
-      </div>
+      {/* ── 金额大字显示 ── */}
+      <AmountDisplay
+        expression={expression}
+        currency={selectedAccount?.currency ?? 'JPY'}
+        categoryColor={categoryColor}
+      />
 
+      {/* ── 日期快选（条件显示） ── */}
+      {showDateQuick && (
+        <DateQuickPicker
+          value={date}
+          onChange={setDate}
+          onOpenCalendar={() => setShowDateSheet(true)}
+          onClose={() => setShowDateQuick(false)}
+        />
+      )}
+
+      {/* ── 数字键盘 ── */}
+      <NumPad
+        onKey={handleKey}
+        categoryColor={categoryColor}
+        submitting={submitting}
+        success={success}
+        dateLabel={dateLabel}
+      />
+
+      {/* ── 弹层 ── */}
       {showDateSheet && (
         <DateSheet value={date} onChange={setDate} onClose={() => setShowDateSheet(false)} />
       )}
-      {showTagSheet && (
-        <TagSheet
+      {showTagEdit && (
+        <TagEditSheet
           tags={tags}
-          selectedIds={selectedTagIds}
-          categoryColor={selectedCategory?.color}
-          onToggle={id => setSelectedTagIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])}
-          onClose={() => setShowTagSheet(false)}
+          onRefresh={refreshTags}
+          onClose={() => setShowTagEdit(false)}
         />
       )}
     </div>

@@ -14,7 +14,7 @@ const ACCOUNT_ICONS: Record<string, string> = {
 
 export default function AccountSelector({ accounts, selectedId, onSelect }: Props) {
   return (
-    <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-1">
+    <div className="flex gap-2">
       {accounts.map(acc => {
         const active = acc.id === selectedId
         return (

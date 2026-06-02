@@ -13,7 +13,6 @@ function parse(text: string, tags: Tag[], categories: Category[]) {
   const numbers = text.match(/\d+\.?\d*/g) || []
   const amount = numbers[numbers.length - 1] || ''
   const tagIds = tags.filter(t => text.includes(t.name)).map(t => t.id)
-  // 简单关键词→分类映射
   const keywordMap: Record<string, string> = {
     '全家': '餐饮', 'ファミマ': '餐饮', '罗森': '餐饮', 'Lawson': '餐饮',
     '电车': '交通', '地铁': '交通', 'Suica': '交通',
@@ -40,17 +39,15 @@ export default function SmartInput({ tags, categories, onParsed }: Props) {
   }
 
   return (
-    <div className="px-4 pt-4 pb-2">
-      <p className="text-[11px] text-center mb-2 font-medium tracking-widest"
-        style={{ color: 'var(--color-text-muted)' }}>快捷输入</p>
+    <div className="px-4 pt-1 pb-2">
       <div
-        className="flex items-center gap-2 px-4 py-3 rounded-2xl transition-all"
+        className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all"
         style={{
           background: focused ? '#EDE8E3' : 'var(--color-border)',
-          border: `1.5px solid ${focused ? 'var(--color-morandi-rose)' : 'transparent'}`,
+          border: `1px solid ${focused ? 'var(--color-morandi-rose)' : 'transparent'}`,
         }}
       >
-        <Sparkles size={16} style={{ color: 'var(--color-morandi-lavender)', flexShrink: 0 }} />
+        <Sparkles size={13} style={{ color: 'var(--color-morandi-lavender)', flexShrink: 0 }} />
         <input
           type="text"
           value={text}
@@ -58,14 +55,11 @@ export default function SmartInput({ tags, categories, onParsed }: Props) {
           onFocus={() => setFocused(true)}
           onBlur={() => { setFocused(false); handleSubmit() }}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder='试试「全家 饭团 咖啡 350」'
-          className="flex-1 text-sm bg-transparent outline-none"
+          placeholder='AI 快捷：「全家 饭团 350」'
+          className="flex-1 text-xs bg-transparent outline-none"
           style={{ color: 'var(--color-text)' }}
         />
       </div>
-      <p className="text-[11px] text-center mt-3 mb-1" style={{ color: 'var(--color-text-muted)' }}>
-        或手动记
-      </p>
     </div>
   )
 }
