@@ -27,10 +27,10 @@ function pctChange(now: number, prev: number) {
 type ChatMsg = { role: 'user' | 'ai'; text: string }
 
 const QUICK_QUESTIONS = [
-  '本月消费分析',
-  '我的存款率怎么样？',
-  '最近哪个分类花太多了？',
-  '按目前速度年底能存多少？',
+  '这个月花得怎么样？',
+  '我存钱厉害吗？',
+  '最近哪里花太多了？',
+  '年底能存多少呀？',
 ]
 
 export default function AnalysisPage() {
@@ -261,7 +261,7 @@ export default function AnalysisPage() {
                 </div>
               </>
             ) : (
-              <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-muted)' }}>暂无支出数据</p>
+              <p className="text-sm text-center py-6" style={{ color: 'var(--color-text-muted)' }}>这个月还没有支出，好省呀～</p>
             )}
           </div>
         </div>
@@ -334,9 +334,9 @@ export default function AnalysisPage() {
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>AI 财务助手</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>AI 小助手</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                    问我关于你的消费和存款的任何问题
+                    关于花钱和存钱，随便问我呀～
                   </p>
                 </div>
               </div>
@@ -353,7 +353,7 @@ export default function AnalysisPage() {
                 style={{ background: '#ADA8C618', borderBottom: '1px solid var(--color-border)' }}>
                 <div className="flex items-center gap-2">
                   <Sparkles size={14} style={{ color: 'var(--color-morandi-lavender)' }} />
-                  <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>AI 财务助手</span>
+                  <span className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>AI 小助手</span>
                 </div>
                 <button onClick={() => setChatOpen(false)}>
                   <X size={16} style={{ color: 'var(--color-text-muted)' }} />
@@ -425,7 +425,7 @@ export default function AnalysisPage() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !sending && sendMessage(input)}
-                  placeholder="问我任何财务问题..."
+                  placeholder="想知道什么就问我吧～"
                   className="flex-1 text-xs bg-transparent outline-none px-2"
                   style={{ color: 'var(--color-text)' }}
                   disabled={sending}

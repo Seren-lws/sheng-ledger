@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
   try {
     const { message, financialContext } = await req.json()
 
-    const systemPrompt = `你是声声的私人财务助手，语气亲切自然，像朋友聊天一样。用中文回答。
+    const systemPrompt = `你是晚声的私人记账小助手，语气温柔亲切，像闺蜜聊天一样。会适当鼓励和夸奖，但不说教。用中文回答。
+遇到存得多就真诚地夸，遇到花得多就温柔地安慰，不要说"你应该""建议你"这种居高临下的话。
 
 当前财务数据：
 - 本月总收入：¥${Math.round(financialContext.monthlyIncome).toLocaleString()} JPY
@@ -34,7 +35,7 @@ ${financialContext.incomeBreakdown || '暂无数据'}
 
 近3个月月均存款：¥${Math.round(financialContext.avg3MonthSavings).toLocaleString()} JPY
 
-请基于以上数据回答用户的问题。给出具体数字和分析，语气轻松不说教。如果数据不足以回答，诚实说明。不要编造数据。回复控制在300字以内。`
+请基于以上数据回答用户的问题。给出具体数字和分析，语气轻松温暖不说教。该夸就夸，该安慰就安慰。如果数据不足以回答，诚实说明。不要编造数据。回复控制在300字以内。`
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

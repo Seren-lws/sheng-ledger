@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import dayjs from 'dayjs'
 import { Plus, TrendingUp, TrendingDown, Target } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -12,6 +12,28 @@ type GoalRow = { id: string; name: string; target_amount: number; currency: Curr
 
 function fmtJpy(n: number) { return `¥${Math.round(Math.abs(n)).toLocaleString()}` }
 function pct(n: number) { return `${(n * 100).toFixed(0)}%` }
+
+const CHEERS_POSITIVE = [
+  '这个月又存下来了，你真的很棒！',
+  '每一笔存款都是未来的底气，继续加油～',
+  '安心感正在一点一点累积中...',
+  '宝贝你已经很努力了，存钱的你闪闪发光！',
+  '存钱不是委屈自己，是给未来的自己写情书～',
+  '又往安全感账户里存了一笔！',
+  '慢慢来，你的节奏刚刚好。',
+]
+const CHEERS_NEGATIVE = [
+  '这个月花多了也没关系，下个月一起追回来～',
+  '偶尔对自己好一点也是必要开支呀！',
+  '别忘了对自己好一点，钱会再来的～',
+  '花掉的都是生活，留下的都是故事。',
+  '没关系的，调整一下节奏就好～',
+]
+const CHEERS_MILESTONE = (amount: string) => [
+  `🎊 恭喜晚声存到了 ${amount}！全服通告！`,
+  `📢 【全服公告】晚声已成功积攒 ${amount}，安心感成就达成！`,
+  `🏆 存款突破 ${amount}！SSR级成就已解锁～`,
+]
 
 export default function SavingsPage() {
   const { data } = useSavingsData()
@@ -44,6 +66,20 @@ export default function SavingsPage() {
   const netDiff = currentMonth.net - lastMonth.net
   const isPositive = currentMonth.net >= 0
 
+  // 鼓励条幅
+  const cheerText = useMemo(() => {
+    const milestones = [5000000, 3000000, 2000000, 1000000, 500000, 300000, 100000]
+    for (const m of milestones) {
+      if (totalAssets >= m) {
+        const arr = CHEERS_MILESTONE(fmtJpy(m))
+        return arr[Math.floor(Math.random() * arr.length)]
+      }
+    }
+    const pool = isPositive ? CHEERS_POSITIVE : CHEERS_NEGATIVE
+    return pool[Math.floor(Math.random() * pool.length)]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalAssets > 0, isPositive])
+
   // 趋势图最大值（用于缩放）
   const maxAbs = Math.max(...trend.map(m => Math.abs(m.net)), 1)
 
@@ -59,8 +95,16 @@ export default function SavingsPage() {
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-28">
 
+        {/* ── 鼓励条幅 ── */}
+        <div className="mx-4 mt-3 px-4 py-3 rounded-2xl text-center"
+          style={{ background: 'linear-gradient(135deg, #F5E6D3, #FFECD2, #F0E6E4)', border: '1px solid #F0E6E420' }}>
+          <p className="text-xs font-medium leading-relaxed" style={{ color: '#8B7355' }}>
+            {cheerText}
+          </p>
+        </div>
+
         {/* ── 1. 本月净存款 ── */}
-        <div className="px-4 mt-4">
+        <div className="px-4 mt-3">
           <div className="rounded-2xl px-5 py-5" style={{ background: 'var(--color-card)' }}>
             <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
               {dayjs().format('M月')}净存款
@@ -103,7 +147,7 @@ export default function SavingsPage() {
         {/* ── 2. 资产构成条 ── */}
         <div className="px-4 mt-4">
           <div className="rounded-2xl px-5 py-4" style={{ background: 'var(--color-card)' }}>
-            <p className="text-xs font-semibold mb-3" style={{ color: 'var(--color-text-muted)' }}>资产构成</p>
+            <p className="text-xs font-semibold mb-3" style={{ color: 'var(--color-text-muted)' }}>你的钱都在这里 💰</p>
 
             {/* 堆叠条 */}
             <div className="h-5 rounded-full overflow-hidden flex" style={{ background: 'var(--color-border)' }}>
@@ -142,7 +186,7 @@ export default function SavingsPage() {
         {/* ── 3. 存款趋势图 ── */}
         <div className="px-4 mt-4">
           <div className="rounded-2xl px-5 py-4" style={{ background: 'var(--color-card)' }}>
-            <p className="text-xs font-semibold mb-4" style={{ color: 'var(--color-text-muted)' }}>存款趋势</p>
+            <p className="text-xs font-semibold mb-4" style={{ color: 'var(--color-text-muted)' }}>存款在慢慢长大 📈</p>
 
             {/* CSS 柱状图 */}
             <div className="flex items-end gap-2 h-28">
@@ -197,7 +241,7 @@ export default function SavingsPage() {
               style={{ background: 'var(--color-card)' }}>
               <Target size={28} style={{ color: 'var(--color-text-muted)', opacity: 0.4 }} />
               <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                还没有存钱目标，设一个试试？
+                还没有存钱目标，给自己定一个小目标吧～
               </p>
             </div>
           ) : (
@@ -243,7 +287,7 @@ export default function SavingsPage() {
                       )}
                       {progress >= 1 && (
                         <span className="text-[11px] font-semibold" style={{ color: 'var(--color-morandi-sage)' }}>
-                          🎉 已达成！
+                          🎉 达成啦！你太厉害了！
                         </span>
                       )}
                     </div>
@@ -261,13 +305,13 @@ export default function SavingsPage() {
 
         {/* ── 5. 统计摘要 ── */}
         <div className="px-4 mt-4">
-          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>统计摘要</p>
+          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>你的存钱成绩单 ✨</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: '近3月月均存款', value: fmtJpy(avg3MonthNet), color: avg3MonthNet >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
-              { label: '近3月月均存款率', value: pct(avg3MonthRate), color: avg3MonthRate >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
-              { label: '累计存款增长', value: growthPct !== null ? (growthPct >= 0 ? '+' : '') + pct(growthPct) : '—', color: (growthPct ?? 0) >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
-              { label: '连续存款月数', value: `${consecutivePositive} 个月`, color: consecutivePositive > 0 ? 'var(--color-morandi-sage)' : 'var(--color-text-muted)' },
+              { label: '月均能存', value: fmtJpy(avg3MonthNet), color: avg3MonthNet >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
+              { label: '存款率', value: pct(avg3MonthRate), color: avg3MonthRate >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
+              { label: '总体增长', value: growthPct !== null ? (growthPct >= 0 ? '+' : '') + pct(growthPct) : '—', color: (growthPct ?? 0) >= 0 ? 'var(--color-morandi-sage)' : 'var(--color-morandi-rose)' },
+              { label: '连续存钱', value: consecutivePositive > 0 ? `${consecutivePositive} 个月 🔥` : '加油！', color: consecutivePositive > 0 ? 'var(--color-morandi-sage)' : 'var(--color-text-muted)' },
             ].map(({ label, value, color }) => (
               <div key={label} className="rounded-xl px-4 py-3" style={{ background: 'var(--color-card)' }}>
                 <p className="text-[10px] mb-1" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
