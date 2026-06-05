@@ -16,6 +16,7 @@ import NumPad from './NumPad'
 import DateQuickPicker from './DateQuickPicker'
 import DateSheet from './DateSheet'
 import SmartInput from './SmartInput'
+import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 
 function evaluate(expr: string): number {
   const clean = expr.replace(/[+\-]$/, '')
@@ -166,6 +167,9 @@ export default function LedgerForm() {
 
       {/* ── 上方可滚动区域 ── */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
+
+        {/* 汇率栏 */}
+        <ExchangeRateBanner />
 
         {/* 支出 / 收入 切换 */}
         <TypeToggle value={type} onChange={setType} />

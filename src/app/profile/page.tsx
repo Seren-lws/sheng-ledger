@@ -1,119 +1,253 @@
 'use client'
+import { useState } from 'react'
+import { Plus, ChevronRight, Pencil, Check } from 'lucide-react'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useExchangeRate } from '@/hooks/useExchangeRate'
 import type { Account } from '@/lib/types'
+import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
+import AccountDetailSheet from '@/components/profile/AccountDetailSheet'
+import AddAccountSheet from '@/components/profile/AddAccountSheet'
 
 const ACCOUNT_ICONS: Record<string, string> = {
-  'みずほ銀行': '🏦',
-  'PayPay':    '📱',
-  '现金-日元':  '💴',
-  '微信钱包':   '💚',
-  '支付宝':    '💙',
+  'みずほ銀行': '🏦', 'PayPay': '📱', '现金-日元': '💴',
+  '微信钱包': '💚', '支付宝': '💙',
 }
 
-function AccountCard({ acc }: { acc: Account }) {
-  const icon = ACCOUNT_ICONS[acc.name] ?? acc.name[0]
-  const balance = Number(acc.balance)
-  const formatted = acc.currency === 'JPY'
-    ? `¥${Math.round(balance).toLocaleString()}`
-    : `¥${balance.toFixed(2)}`
-
-  return (
-    <div
-      className="flex items-center gap-3 px-4 py-4 rounded-2xl"
-      style={{ background: 'var(--color-card)' }}
-    >
-      {/* 图标圈 */}
-      <div
-        className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
-        style={{ background: `${acc.color}18` }}
-      >
-        {icon}
-      </div>
-
-      {/* 账户名 + 币种 */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold leading-snug" style={{ color: 'var(--color-text)' }}>
-          {acc.name}
-        </p>
-        <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-          {acc.currency}
-        </p>
-      </div>
-
-      {/* 余额 */}
-      <p className="text-base font-semibold flex-shrink-0" style={{ color: acc.color }}>
-        {formatted}
-      </p>
-    </div>
-  )
-}
+const MENU_ITEMS = [
+  { icon: '📌', label: '固定支出管理' },
+  { icon: '🗂️', label: '分类管理' },
+  { icon: '🏷️', label: '标签管理' },
+  { icon: '📤', label: '数据导出' },
+]
 
 export default function ProfilePage() {
-  const { accounts } = useAccounts()
+  const { accounts, refresh: refreshAccounts } = useAccounts()
+  const { rate, updateRate } = useExchangeRate()
 
+  const [baseCurrency, setBaseCurrency] = useState<'JPY' | 'CNY'>('JPY')
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
+  const [showAddAccount, setShowAddAccount] = useState(false)
+
+  // 汇率编辑
+  const [editingRate, setEditingRate] = useState(false)
+  const [rateDraft, setRateDraft] = useState('')
+
+  function startEditRate() {
+    setRateDraft(rate?.toString() ?? '')
+    setEditingRate(true)
+  }
+  async function saveRate() {
+    const n = parseFloat(rateDraft)
+    if (!isNaN(n) && n > 0) await updateRate(n)
+    setEditingRate(false)
+  }
+
+  // 资产计算
   const jpyAccounts = accounts.filter(a => a.currency === 'JPY')
   const cnyAccounts = accounts.filter(a => a.currency === 'CNY')
-  const jpyTotal = jpyAccounts.reduce((s, a) => s + Number(a.balance), 0)
-  const cnyTotal = cnyAccounts.reduce((s, a) => s + Number(a.balance), 0)
+  const jpySum = jpyAccounts.reduce((s, a) => s + Number(a.balance), 0)
+  const cnySum = cnyAccounts.reduce((s, a) => s + Number(a.balance), 0)
+  const safeRate = rate ?? 1
+
+  const totalInBase = baseCurrency === 'JPY'
+    ? jpySum + cnySum * safeRate
+    : jpySum / safeRate + cnySum
+
+  const baseLabel = baseCurrency === 'JPY' ? '¥' : '¥'
+  const totalFormatted = baseCurrency === 'JPY'
+    ? `¥${Math.round(totalInBase).toLocaleString()}`
+    : `¥${totalInBase.toFixed(2)}`
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar pb-20" style={{ background: 'var(--color-bg)' }}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
+      <ExchangeRateBanner />
 
-      {/* ── 净资产卡片 ── */}
-      <div
-        className="mx-4 mt-4 px-5 py-5 rounded-3xl"
-        style={{ background: 'var(--color-morandi-rose)', color: 'white' }}
-      >
-        <p className="text-xs opacity-75 mb-1">JPY 总余额</p>
-        <p className="text-4xl font-light tracking-tight leading-none">
-          ¥{Math.round(jpyTotal).toLocaleString()}
-        </p>
-        {cnyTotal > 0 && (
-          <p className="text-xs opacity-75 mt-2">
-            + ¥{cnyTotal.toFixed(2)} CNY
-          </p>
-        )}
-      </div>
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-20">
 
-      {/* ── JPY 账户 ── */}
-      {jpyAccounts.length > 0 && (
-        <div className="px-4 mt-5">
-          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>
-            日元账户
-          </p>
-          <div className="flex flex-col gap-2">
-            {jpyAccounts.map(acc => <AccountCard key={acc.id} acc={acc} />)}
-          </div>
-        </div>
-      )}
-
-      {/* ── CNY 账户 ── */}
-      {cnyAccounts.length > 0 && (
-        <div className="px-4 mt-5">
-          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>
-            人民币账户
-          </p>
-          <div className="flex flex-col gap-2">
-            {cnyAccounts.map(acc => <AccountCard key={acc.id} acc={acc} />)}
-          </div>
-        </div>
-      )}
-
-      {/* ── 关于 ── */}
-      <div className="px-4 mt-6">
+        {/* ── 资产总览卡片 ── */}
         <div
-          className="px-4 py-3 rounded-2xl flex items-center justify-between"
-          style={{ background: 'var(--color-card)' }}
+          className="mx-4 mt-4 px-5 py-5 rounded-3xl"
+          style={{ background: 'var(--color-morandi-rose)', color: 'white' }}
         >
-          <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>晚声记账本</p>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              记得快 · 看得清 · AI 帮你算
-            </p>
+          {/* 标题行 + 切换按钮 */}
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs opacity-75">总资产</p>
+            <button
+              onClick={() => setBaseCurrency(c => c === 'JPY' ? 'CNY' : 'JPY')}
+              className="text-xs px-2.5 py-1 rounded-full font-medium"
+              style={{ background: 'rgba(255,255,255,0.25)' }}
+            >
+              {baseCurrency === 'JPY' ? 'JPY → CNY' : 'CNY → JPY'}
+            </button>
           </div>
-          <span className="text-2xl">🌸</span>
+
+          {/* 总额 */}
+          <p className="text-4xl font-light tracking-tight leading-none mb-3">
+            {totalFormatted}
+            <span className="text-sm font-normal opacity-70 ml-2">{baseCurrency}</span>
+          </p>
+
+          {/* 分币种小计 */}
+          <div className="flex gap-5 text-xs opacity-80">
+            <span>🇯🇵 ¥{Math.round(jpySum).toLocaleString()} JPY</span>
+            {cnySum > 0 && <span>🇨🇳 ¥{cnySum.toFixed(2)} CNY</span>}
+          </div>
+        </div>
+
+        {/* ── 账户列表 ── */}
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>账户</p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)' }}>
+            {accounts.map((acc, i) => {
+              const icon = ACCOUNT_ICONS[acc.name] ?? acc.name[0]
+              const fmtBalance = acc.currency === 'JPY'
+                ? `¥${Math.round(Number(acc.balance)).toLocaleString()}`
+                : `¥${Number(acc.balance).toFixed(2)}`
+              return (
+                <button
+                  key={acc.id}
+                  onClick={() => setSelectedAccount(acc)}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 transition-opacity active:opacity-60"
+                  style={{ borderBottom: i < accounts.length - 1 ? '1px solid var(--color-border)' : 'none' }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                    style={{ background: `${acc.color}18` }}
+                  >
+                    {icon}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{acc.name}</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{acc.currency}</p>
+                  </div>
+                  <p className="text-base font-semibold flex-shrink-0" style={{ color: acc.color }}>
+                    {fmtBalance}
+                  </p>
+                  <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                </button>
+              )
+            })}
+
+            {/* 添加账户 */}
+            <button
+              onClick={() => setShowAddAccount(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 transition-opacity active:opacity-60"
+              style={{ borderTop: accounts.length > 0 ? '1px solid var(--color-border)' : 'none' }}
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--color-border)' }}>
+                <Plus size={18} style={{ color: 'var(--color-text-muted)' }} />
+              </div>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>添加账户</p>
+            </button>
+          </div>
+        </div>
+
+        {/* ── 汇率设置 ── */}
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>汇率设置</p>
+          <div className="rounded-2xl px-4 py-4" style={{ background: 'var(--color-card)' }}>
+            <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
+              1 CNY = ? JPY（用于换算总资产）
+            </p>
+            <div className="flex items-center gap-3">
+              {editingRate ? (
+                <>
+                  <input
+                    autoFocus
+                    type="number"
+                    inputMode="decimal"
+                    value={rateDraft}
+                    onChange={e => setRateDraft(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveRate()}
+                    onBlur={saveRate}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-lg font-semibold outline-none"
+                    style={{ background: 'var(--color-border)', color: 'var(--color-text)' }}
+                  />
+                  <span className="text-base font-medium" style={{ color: 'var(--color-text-muted)' }}>JPY</span>
+                  <button
+                    onClick={saveRate}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                    style={{ background: 'var(--color-morandi-rose)' }}
+                  >
+                    <Check size={16} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="flex-1 text-2xl font-light" style={{ color: 'var(--color-text)' }}>
+                    {rate ?? '—'} <span className="text-base font-normal" style={{ color: 'var(--color-text-muted)' }}>JPY</span>
+                  </p>
+                  <button
+                    onClick={startEditRate}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
+                    style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+                  >
+                    <Pencil size={13} />
+                    修改
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 更多功能占位 ── */}
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>更多功能</p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)' }}>
+            {MENU_ITEMS.map((item, i) => (
+              <div
+                key={item.label}
+                className="flex items-center gap-3 px-4 py-3.5"
+                style={{
+                  borderBottom: i < MENU_ITEMS.length - 1 ? '1px solid var(--color-border)' : 'none',
+                  opacity: 0.45,
+                }}
+              >
+                <span className="text-lg w-7 text-center">{item.icon}</span>
+                <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{item.label}</p>
+                <span className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                  即将上线
+                </span>
+                <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── App 签名 ── */}
+        <div className="px-4 mt-6 mb-2">
+          <div
+            className="px-4 py-3 rounded-2xl flex items-center justify-between"
+            style={{ background: 'var(--color-card)' }}
+          >
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>晚声记账本</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                记得快 · 看得清 · AI 帮你算
+              </p>
+            </div>
+            <span className="text-2xl">🌸</span>
+          </div>
         </div>
       </div>
+
+      {/* ── 弹层 ── */}
+      {selectedAccount && (
+        <AccountDetailSheet
+          account={selectedAccount}
+          onClose={() => setSelectedAccount(null)}
+          onUpdated={() => { refreshAccounts(); setSelectedAccount(null) }}
+        />
+      )}
+      {showAddAccount && (
+        <AddAccountSheet
+          onClose={() => setShowAddAccount(false)}
+          onAdded={() => { refreshAccounts(); setShowAddAccount(false) }}
+        />
+      )}
     </div>
   )
 }

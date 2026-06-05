@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { getCategoryIcon } from '@/lib/category-icons'
 import { DEFAULT_TX_FILTER } from '@/lib/types'
 import type { TxWithRefs, TxFilter } from '@/lib/types'
-import ExchangeRateBar from '@/components/transactions/ExchangeRateBar'
+import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 import FilterPanel from '@/components/transactions/FilterPanel'
 import TxDetailSheet from '@/components/transactions/TxDetailSheet'
 
@@ -134,7 +134,7 @@ export default function TransactionsPage() {
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
 
       {/* ── 汇率栏 ── */}
-      <ExchangeRateBar />
+      <ExchangeRateBanner />
 
       {/* ── 月份导航 + 汇总 ── */}
       <div
