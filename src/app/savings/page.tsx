@@ -321,6 +321,38 @@ export default function SavingsPage() {
             ))}
           </div>
         </div>
+
+        {/* ── 6. 即将解锁的功能 ── */}
+        <div className="px-4 mt-4 space-y-2">
+          <div className="rounded-2xl px-5 py-4" style={{ background: 'var(--color-card)', opacity: 0.7 }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base">📊</span>
+              <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>智能预算</p>
+              <span className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                数据积累中
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              再记 {Math.max(3 - dataMonths, 0)} 个月账，系统就能根据你的消费习惯自动生成每月预算建议，花超了会温柔提醒你～
+            </p>
+          </div>
+
+          <div className="rounded-2xl px-5 py-4" style={{ background: 'var(--color-card)', opacity: 0.7 }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base">📅</span>
+              <p className="text-xs font-semibold" style={{ color: 'var(--color-text)' }}>去年同期对比</p>
+              <span className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                数据积累中
+              </span>
+            </div>
+            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+              记满一年后就能看到「和去年同期比存了多少」，期待那时候的你会很惊喜！
+            </p>
+          </div>
+        </div>
+
       </div>
 
       {/* ── 弹层 ── */}
