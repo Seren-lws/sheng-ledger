@@ -49,24 +49,9 @@ export default function SavingsPage() {
   }, [])
   useEffect(() => { loadGoals() }, [loadGoals])
 
-  if (!data) {
-    return (
-      <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
-        <ExchangeRateBanner />
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中…</p>
-        </div>
-      </div>
-    )
-  }
-
-  const { currentMonth, lastMonth, totalAssets, monthlyFixed, estimatedLiving, freeBalance,
-          trend, avg3MonthNet, avg3MonthRate, consecutivePositive, growthPct, dataMonths, rate } = data
-
-  const netDiff = currentMonth.net - lastMonth.net
-  const isPositive = currentMonth.net >= 0
-
-  // 鼓励条幅
+  // 鼓励条幅（必须在 early return 之前，hooks 不能有条件调用）
+  const totalAssets = data?.totalAssets ?? 0
+  const isPositive = data ? data.currentMonth.net >= 0 : true
   const cheerText = useMemo(() => {
     const milestones = [5000000, 3000000, 2000000, 1000000, 500000, 300000, 100000]
     for (const m of milestones) {
@@ -79,6 +64,22 @@ export default function SavingsPage() {
     return pool[Math.floor(Math.random() * pool.length)]
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalAssets > 0, isPositive])
+
+  if (!data) {
+    return (
+      <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
+        <ExchangeRateBanner />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中…</p>
+        </div>
+      </div>
+    )
+  }
+
+  const { currentMonth, lastMonth, totalAssets: _ta, monthlyFixed, estimatedLiving, freeBalance,
+          trend, avg3MonthNet, avg3MonthRate, consecutivePositive, growthPct, dataMonths, rate } = data
+
+  const netDiff = currentMonth.net - lastMonth.net
 
   // 趋势图最大值（用于缩放）
   const maxAbs = Math.max(...trend.map(m => Math.abs(m.net)), 1)
