@@ -16,6 +16,8 @@ import AmountDisplay from './AmountDisplay'
 import NumPad from './NumPad'
 import DateQuickPicker from './DateQuickPicker'
 import DateSheet from './DateSheet'
+import SmartInput from './SmartInput'
+import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 
 function evaluate(expr: string): number {
   const clean = expr.replace(/[+\-]$/, '')
@@ -163,8 +165,27 @@ export default function LedgerForm() {
       {/* ── 上方可滚动区域 ── */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
 
+        {/* 汇率横幅 */}
+        <ExchangeRateBanner />
+
         {/* 支出 / 收入 切换 */}
         <TypeToggle value={type} onChange={setType} />
+
+        {/* AI 智能输入 */}
+        <SmartInput
+          tags={tags}
+          categories={categories}
+          accounts={accounts}
+          onParsed={({ amount, type: parsedType, tagIds, categoryId: cid, accountId: aid, note: parsedNote, date: parsedDate }) => {
+            if (amount) setExpression(amount)
+            if (parsedType) setType(parsedType)
+            if (tagIds && tagIds.length > 0) setSelectedTagIds(tagIds)
+            if (cid) setCategoryId(cid)
+            if (aid) setAccountId(aid)
+            if (parsedNote) setNote(parsedNote)
+            if (parsedDate) setDate(parsedDate)
+          }}
+        />
 
         {/* 分类横滑 */}
         <CategoryPicker categories={categories} selectedId={categoryId} onSelect={setCategoryId} />

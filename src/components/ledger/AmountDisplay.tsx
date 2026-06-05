@@ -20,27 +20,26 @@ export default function AmountDisplay({ expression, currency, categoryColor = '#
   const result = hasOp ? getResult(expression) : null
 
   return (
-    <div className="px-5 py-3">
+    <div className="px-5 py-2">
       {result && (
-        <p className="text-right text-sm mb-1" style={{ color: 'var(--color-text-muted)' }}>
+        <p className="text-right text-xs mb-0.5" style={{ color: 'var(--color-text-muted)' }}>
           = {result}
         </p>
       )}
       <div className="flex items-baseline justify-end gap-1">
-        <span className="text-2xl font-light" style={{ color: 'var(--color-text-muted)' }}>¥</span>
+        <span className="text-xl font-light" style={{ color: 'var(--color-text-muted)' }}>¥</span>
         <span
-          className="text-6xl font-light tracking-tight leading-none"
+          className="text-5xl font-light tracking-tight leading-none"
           style={{ color: expression ? 'var(--color-text)' : 'var(--color-text-muted)' }}
         >
           {expression || '0'}
         </span>
-        {/* 跟随分类色的光标 */}
         <span
-          className="inline-block w-[2.5px] rounded-full self-end mb-1 animate-pulse"
-          style={{ height: '44px', background: categoryColor, opacity: 0.85 }}
+          className="inline-block w-[2px] rounded-full self-end mb-1 animate-pulse"
+          style={{ height: '36px', background: categoryColor, opacity: 0.85 }}
         />
       </div>
-      <p className="text-right text-[10px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+      <p className="text-right text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
         {currency}
       </p>
     </div>

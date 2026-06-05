@@ -38,7 +38,7 @@ export default function NumPad({
 }: Props) {
   return (
     <div
-      className="flex-shrink-0 grid grid-cols-4 gap-1.5 p-3 pb-[calc(0.75rem+56px)]"
+      className="flex-shrink-0 grid grid-cols-4 gap-1 px-3 pt-2 pb-[calc(0.5rem+56px)]"
       style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}
     >
       {ROWS.flat().map((key, i) => {
@@ -49,7 +49,7 @@ export default function NumPad({
             key={i}
             onPointerDown={() => onKey(key)}
             disabled={isDone && submitting}
-            className="h-14 rounded-2xl flex items-center justify-center font-medium active:scale-95 transition-transform select-none"
+            className="h-11 rounded-xl flex items-center justify-center font-medium active:scale-95 transition-transform select-none"
             style={{
               background: isDone
                 ? success ? 'var(--color-morandi-mint)' : categoryColor
@@ -57,7 +57,7 @@ export default function NumPad({
                   ? 'var(--color-border)'
                   : 'var(--color-card)',
               color: isDone ? 'white' : isFn ? 'var(--color-text-muted)' : 'var(--color-text)',
-              fontSize: isDone ? '14px' : '22px',
+              fontSize: isDone ? '13px' : '20px',
               fontWeight: isDone ? 600 : 400,
               boxShadow: (!isDone && !isFn && key !== 'backspace') ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
             }}
