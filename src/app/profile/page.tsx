@@ -234,7 +234,7 @@ export default function ProfilePage() {
                   <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
                 </>
               )
-              const cls = "flex items-center gap-3 px-4 py-3.5 w-full"
+              const cls = "flex items-center gap-3 px-4 py-3.5 w-full text-left"
               const sty = {
                 borderBottom: i < MENU_ITEMS.length - 1 ? '1px solid var(--color-border)' : 'none',
                 opacity: isActive ? 1 : 0.45,
