@@ -30,7 +30,7 @@ export default function TagEditSheet({ tags, onRefresh, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-t-2xl p-4 pb-8"
         style={{ background: 'var(--color-card)' }}
