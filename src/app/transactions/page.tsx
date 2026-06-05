@@ -263,7 +263,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── 流水列表 ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-20">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-28">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>加载中…</p>

@@ -33,12 +33,15 @@ export default function ProfilePage() {
   const [rateDraft, setRateDraft] = useState('')
 
   function startEditRate() {
-    setRateDraft(rate?.toString() ?? '')
+    setRateDraft(displayRate ?? '')   // 以「100 JPY = X CNY」格式预填
     setEditingRate(true)
   }
+  // 显示格式：100 JPY = X CNY；存储格式：cny_to_jpy
+  const displayRate = rate ? (100 / rate).toFixed(2) : null
+
   async function saveRate() {
     const n = parseFloat(rateDraft)
-    if (!isNaN(n) && n > 0) await updateRate(n)
+    if (!isNaN(n) && n > 0) await updateRate(100 / n)   // 反算 cny_to_jpy
     setEditingRate(false)
   }
 
@@ -62,7 +65,7 @@ export default function ProfilePage() {
     <div className="h-full flex flex-col" style={{ background: 'var(--color-bg)' }}>
       <ExchangeRateBanner />
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-20">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-28">
 
         {/* ── 资产总览卡片 ── */}
         <div
@@ -148,11 +151,12 @@ export default function ProfilePage() {
           <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>汇率设置</p>
           <div className="rounded-2xl px-4 py-4" style={{ background: 'var(--color-card)' }}>
             <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
-              1 CNY = ? JPY（用于换算总资产）
+              100 JPY = ? CNY（用于换算总资产）
             </p>
             <div className="flex items-center gap-3">
               {editingRate ? (
                 <>
+                  <span className="text-base font-medium flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>100 JPY =</span>
                   <input
                     autoFocus
                     type="number"
@@ -164,10 +168,10 @@ export default function ProfilePage() {
                     className="flex-1 px-4 py-2.5 rounded-xl text-lg font-semibold outline-none"
                     style={{ background: 'var(--color-border)', color: 'var(--color-text)' }}
                   />
-                  <span className="text-base font-medium" style={{ color: 'var(--color-text-muted)' }}>JPY</span>
+                  <span className="text-base font-medium" style={{ color: 'var(--color-text-muted)' }}>CNY</span>
                   <button
                     onClick={saveRate}
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0"
                     style={{ background: 'var(--color-morandi-rose)' }}
                   >
                     <Check size={16} />
@@ -176,11 +180,13 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <p className="flex-1 text-2xl font-light" style={{ color: 'var(--color-text)' }}>
-                    {rate ?? '—'} <span className="text-base font-normal" style={{ color: 'var(--color-text-muted)' }}>JPY</span>
+                    <span className="text-sm font-normal mr-1" style={{ color: 'var(--color-text-muted)' }}>100 JPY =</span>
+                    {displayRate ?? '—'}
+                    <span className="text-base font-normal ml-1" style={{ color: 'var(--color-text-muted)' }}>CNY</span>
                   </p>
                   <button
                     onClick={startEditRate}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm flex-shrink-0"
                     style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}
                   >
                     <Pencil size={13} />

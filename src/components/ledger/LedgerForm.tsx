@@ -15,8 +15,6 @@ import AmountDisplay from './AmountDisplay'
 import NumPad from './NumPad'
 import DateQuickPicker from './DateQuickPicker'
 import DateSheet from './DateSheet'
-import SmartInput from './SmartInput'
-import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 
 function evaluate(expr: string): number {
   const clean = expr.replace(/[+\-]$/, '')
@@ -105,12 +103,6 @@ export default function LedgerForm() {
     setExpression(p => p.length >= 12 ? p : p + key)
   }
 
-  function handleSmartParsed(result: { amount: string; tagIds: string[]; categoryId?: string }) {
-    if (result.amount) setExpression(result.amount)
-    if (result.tagIds.length) setSelectedTagIds(result.tagIds)
-    if (result.categoryId) setCategoryId(result.categoryId)
-  }
-
   async function handleSubmit() {
     const amount = evaluate(expression)
     if (amount <= 0 || !categoryId || !accountId || !selectedAccount) return
@@ -168,9 +160,6 @@ export default function LedgerForm() {
       {/* ── 上方可滚动区域 ── */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
 
-        {/* 汇率栏 */}
-        <ExchangeRateBanner />
-
         {/* 支出 / 收入 切换 */}
         <TypeToggle value={type} onChange={setType} />
 
@@ -217,11 +206,8 @@ export default function LedgerForm() {
           />
         </div>
 
-        {/* AI 快捷输入（紧凑） */}
-        <SmartInput tags={tags} categories={categories} onParsed={handleSmartParsed} />
-
-        {/* 底部留白，确保内容不被金额区遮挡 */}
-        <div className="h-3" />
+        {/* 底部留白 */}
+        <div className="h-2" />
       </div>
 
       {/* ── 金额大字显示 ── */}
