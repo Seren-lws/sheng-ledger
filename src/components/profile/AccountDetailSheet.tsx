@@ -17,6 +17,8 @@ interface Props {
   onUpdated: () => void
 }
 
+type RawCategory = { name: string; color: string }
+
 type RecentTx = {
   id: string
   type: 'expense' | 'income'
@@ -24,7 +26,7 @@ type RecentTx = {
   currency: string
   date: string
   note: string | null
-  category: { name: string; color: string } | null
+  category: RawCategory | null
 }
 
 export default function AccountDetailSheet({ account, onClose, onUpdated }: Props) {
@@ -46,7 +48,19 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
         .limit(8),
     ])
     setTxCount(count ?? 0)
-    setRecentTx((data ?? []) as RecentTx[])
+    // Supabase 关联查询可能返回数组（一对多推断），归一化为单对象
+    const normalized: RecentTx[] = (data ?? []).map((item: any) => ({
+      id: item.id,
+      type: item.type as 'expense' | 'income',
+      amount: item.amount,
+      currency: item.currency,
+      date: item.date,
+      note: item.note ?? null,
+      category: Array.isArray(item.category)
+        ? (item.category[0] as RawCategory ?? null)
+        : (item.category as RawCategory ?? null),
+    }))
+    setRecentTx(normalized)
   }, [account.id])
 
   useEffect(() => { load() }, [load])

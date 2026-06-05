@@ -66,6 +66,9 @@ export default function TransactionsPage() {
 
     let results: TxWithRefs[] = (data ?? []).map((tx: any) => ({
       ...tx,
+      // Supabase join 有时推断为数组，归一化为对象
+      category: Array.isArray(tx.category) ? (tx.category[0] ?? null) : tx.category,
+      account:  Array.isArray(tx.account)  ? (tx.account[0]  ?? null) : tx.account,
       tags: (tx.transaction_tags ?? []).map((tt: any) => tt.tags).filter(Boolean),
     }))
 
