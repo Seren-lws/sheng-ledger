@@ -55,18 +55,26 @@ body {
   &::-webkit-scrollbar { display: none; }
 }
 
-/* Toast 弹入动画 */
-@keyframes toast-in {
-  0% { opacity: 0; transform: scale(0.75); }
-  60% { opacity: 1; transform: scale(1.03); }
+/* Toast 动画 */
+@keyframes toast-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.1); }
+  70% { transform: scale(0.95); }
   100% { transform: scale(1); }
 }
-@keyframes toast-out {
+@keyframes toast-bye {
   0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(0.6) translateY(-10px); }
 }
-.animate-toast-in { animation: toast-in 0.35s ease-out forwards; }
-.animate-toast-out { animation: toast-out 0.5s ease-in forwards; }
+@keyframes particle-burst {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
+}
+@keyframes particle-fade {
+  to { opacity: 0; transform: scale(0); }
+}
+.animate-toast-pop { animation: toast-pop 0.45s ease-out forwards; }
+.animate-toast-bye { animation: toast-bye 0.5s ease-in forwards; }
 
 /* 禁止 iOS 双击缩放 */
 button,
