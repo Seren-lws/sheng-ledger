@@ -33,6 +33,7 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
   const [mode, setMode] = useState<'view' | 'edit' | 'confirm-delete'>('view')
   const [name, setName] = useState(account.name)
   const [color, setColor] = useState(account.color)
+  const [balance, setBalance] = useState(String(account.balance))
   const [saving, setSaving] = useState(false)
   const [txCount, setTxCount] = useState<number | null>(null)
   const [recentTx, setRecentTx] = useState<RecentTx[]>([])
@@ -67,8 +68,10 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
 
   async function handleSave() {
     if (!name.trim()) return
+    const b = parseFloat(balance)
+    if (isNaN(b)) return
     setSaving(true)
-    await supabase.from('accounts').update({ name: name.trim(), color }).eq('id', account.id)
+    await supabase.from('accounts').update({ name: name.trim(), color, balance: b }).eq('id', account.id)
     setSaving(false)
     onUpdated()
     onClose()
@@ -129,6 +132,17 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
                   value={name}
                   onChange={e => setName(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ background: 'var(--color-border)', color: 'var(--color-text)' }}
+                />
+              </div>
+              <div>
+                <p className="text-xs mb-1.5" style={{ color: 'var(--color-text-muted)' }}>当前余额（{account.currency}）</p>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={balance}
+                  onChange={e => setBalance(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-lg font-semibold outline-none"
                   style={{ background: 'var(--color-border)', color: 'var(--color-text)' }}
                 />
               </div>
