@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { Plus, ChevronRight, Pencil, Check } from 'lucide-react'
 import { useAccounts } from '@/hooks/useAccounts'
 import { useExchangeRate } from '@/hooks/useExchangeRate'
@@ -14,11 +15,11 @@ const ACCOUNT_ICONS: Record<string, string> = {
 }
 
 const MENU_ITEMS = [
-  { icon: '📌', label: '固定支出管理' },
-  { icon: '🗂️', label: '分类管理' },
-  { icon: '🏷️', label: '标签管理' },
-  { icon: '📤', label: '数据导出' },
-]
+  { icon: '📌', label: '固定支出管理', href: '/fixed-expenses' },
+  { icon: '🗂️', label: '分类管理', href: null },
+  { icon: '🏷️', label: '标签管理', href: null },
+  { icon: '📤', label: '数据导出', href: null },
+] as const
 
 export default function ProfilePage() {
   const { accounts, refresh: refreshAccounts } = useAccounts()
@@ -202,24 +203,35 @@ export default function ProfilePage() {
         <div className="px-4 mt-5">
           <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>更多功能</p>
           <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)' }}>
-            {MENU_ITEMS.map((item, i) => (
-              <div
-                key={item.label}
-                className="flex items-center gap-3 px-4 py-3.5"
-                style={{
-                  borderBottom: i < MENU_ITEMS.length - 1 ? '1px solid var(--color-border)' : 'none',
-                  opacity: 0.45,
-                }}
-              >
-                <span className="text-lg w-7 text-center">{item.icon}</span>
-                <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{item.label}</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
-                  即将上线
-                </span>
-                <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
-              </div>
-            ))}
+            {MENU_ITEMS.map((item, i) => {
+              const inner = (
+                <>
+                  <span className="text-lg w-7 text-center">{item.icon}</span>
+                  <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{item.label}</p>
+                  {!item.href && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full"
+                      style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                      即将上线
+                    </span>
+                  )}
+                  <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                </>
+              )
+              const cls = "flex items-center gap-3 px-4 py-3.5 w-full"
+              const sty = {
+                borderBottom: i < MENU_ITEMS.length - 1 ? '1px solid var(--color-border)' : 'none',
+                opacity: item.href ? 1 : 0.45,
+              }
+              return item.href ? (
+                <Link key={item.label} href={item.href} className={cls} style={sty}>
+                  {inner}
+                </Link>
+              ) : (
+                <div key={item.label} className={cls} style={sty}>
+                  {inner}
+                </div>
+              )
+            })}
           </div>
         </div>
 
