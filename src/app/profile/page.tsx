@@ -10,6 +10,8 @@ import ExportSheet from '@/components/profile/ExportSheet'
 import ReminderSetting from '@/components/profile/ReminderSetting'
 import AccountDetailSheet from '@/components/profile/AccountDetailSheet'
 import AddAccountSheet from '@/components/profile/AddAccountSheet'
+import CategoryManageSheet from '@/components/profile/CategoryManageSheet'
+import TagManageSheet from '@/components/profile/TagManageSheet'
 
 const ACCOUNT_ICONS: Record<string, string> = {
   'みずほ銀行': '🏦', 'PayPay': '📱', '现金-日元': '💴',
@@ -18,8 +20,8 @@ const ACCOUNT_ICONS: Record<string, string> = {
 
 const MENU_ITEMS = [
   { icon: '📌', label: '固定支出管理', href: '/fixed-expenses', action: null },
-  { icon: '🗂️', label: '分类管理', href: null, action: null },
-  { icon: '🏷️', label: '标签管理', href: null, action: null },
+  { icon: '🗂️', label: '分类管理', href: null, action: 'category' },
+  { icon: '🏷️', label: '标签管理', href: null, action: 'tag' },
   { icon: '📤', label: '数据导出', href: null, action: 'export' },
 ] as const
 
@@ -31,6 +33,8 @@ export default function ProfilePage() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [showAddAccount, setShowAddAccount] = useState(false)
   const [showExport, setShowExport] = useState(false)
+  const [showCategory, setShowCategory] = useState(false)
+  const [showTag, setShowTag] = useState(false)
 
   // 汇率编辑
   const [editingRate, setEditingRate] = useState(false)
@@ -240,7 +244,13 @@ export default function ProfilePage() {
               if (item.action === 'export') return (
                 <button key={item.label} onClick={() => setShowExport(true)} className={cls} style={sty}>{inner}</button>
               )
-              return <div key={item.label} className={cls} style={sty}>{inner}</div>
+              if (item.action === 'category') return (
+                <button key={item.label} onClick={() => setShowCategory(true)} className={cls} style={sty}>{inner}</button>
+              )
+              if (item.action === 'tag') return (
+                <button key={item.label} onClick={() => setShowTag(true)} className={cls} style={sty}>{inner}</button>
+              )
+              return null
             })}
           </div>
         </div>
@@ -278,6 +288,12 @@ export default function ProfilePage() {
       )}
       {showExport && (
         <ExportSheet onClose={() => setShowExport(false)} />
+      )}
+      {showCategory && (
+        <CategoryManageSheet onClose={() => setShowCategory(false)} />
+      )}
+      {showTag && (
+        <TagManageSheet onClose={() => setShowTag(false)} />
       )}
     </div>
   )
