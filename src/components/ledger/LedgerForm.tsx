@@ -6,6 +6,7 @@ import type { TransactionType } from '@/lib/types'
 import { useCategories } from '@/hooks/useCategories'
 import { useTags } from '@/hooks/useTags'
 import { useAccounts } from '@/hooks/useAccounts'
+import { useToast } from '@/components/common/Toast'
 import TypeToggle from './TypeToggle'
 import CategoryPicker from './CategoryPicker'
 import AccountSelector from './AccountSelector'
@@ -29,6 +30,7 @@ function evaluate(expr: string): number {
 }
 
 export default function LedgerForm() {
+  const toast = useToast()
   const [type, setType] = useState<TransactionType>('expense')
   const [expression, setExpression] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -138,6 +140,7 @@ export default function LedgerForm() {
       }
 
       setSuccess(true)
+      toast('记好啦！')
       setTimeout(() => {
         setSuccess(false)
         setExpression('')

@@ -6,6 +6,8 @@ import { useAccounts } from '@/hooks/useAccounts'
 import { useExchangeRate } from '@/hooks/useExchangeRate'
 import type { Account } from '@/lib/types'
 import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
+import ExportSheet from '@/components/profile/ExportSheet'
+import ReminderSetting from '@/components/profile/ReminderSetting'
 import AccountDetailSheet from '@/components/profile/AccountDetailSheet'
 import AddAccountSheet from '@/components/profile/AddAccountSheet'
 
@@ -15,10 +17,10 @@ const ACCOUNT_ICONS: Record<string, string> = {
 }
 
 const MENU_ITEMS = [
-  { icon: '📌', label: '固定支出管理', href: '/fixed-expenses' },
-  { icon: '🗂️', label: '分类管理', href: null },
-  { icon: '🏷️', label: '标签管理', href: null },
-  { icon: '📤', label: '数据导出', href: null },
+  { icon: '📌', label: '固定支出管理', href: '/fixed-expenses', action: null },
+  { icon: '🗂️', label: '分类管理', href: null, action: null },
+  { icon: '🏷️', label: '标签管理', href: null, action: null },
+  { icon: '📤', label: '数据导出', href: null, action: 'export' },
 ] as const
 
 export default function ProfilePage() {
@@ -28,6 +30,7 @@ export default function ProfilePage() {
   const [baseCurrency, setBaseCurrency] = useState<'JPY' | 'CNY'>('JPY')
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [showAddAccount, setShowAddAccount] = useState(false)
+  const [showExport, setShowExport] = useState(false)
 
   // 汇率编辑
   const [editingRate, setEditingRate] = useState(false)
@@ -199,16 +202,25 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── 更多功能占位 ── */}
+        {/* ── 记账提醒 ── */}
+        <div className="px-4 mt-5">
+          <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>提醒</p>
+          <div className="rounded-2xl px-4 py-3.5" style={{ background: 'var(--color-card)' }}>
+            <ReminderSetting />
+          </div>
+        </div>
+
+        {/* ── 更多功能 ── */}
         <div className="px-4 mt-5">
           <p className="text-xs font-semibold mb-2 ml-1" style={{ color: 'var(--color-text-muted)' }}>更多功能</p>
           <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)' }}>
             {MENU_ITEMS.map((item, i) => {
+              const isActive = !!item.href || !!item.action
               const inner = (
                 <>
                   <span className="text-lg w-7 text-center">{item.icon}</span>
                   <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{item.label}</p>
-                  {!item.href && (
+                  {!isActive && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full"
                       style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
                       即将上线
@@ -220,17 +232,15 @@ export default function ProfilePage() {
               const cls = "flex items-center gap-3 px-4 py-3.5 w-full"
               const sty = {
                 borderBottom: i < MENU_ITEMS.length - 1 ? '1px solid var(--color-border)' : 'none',
-                opacity: item.href ? 1 : 0.45,
+                opacity: isActive ? 1 : 0.45,
               }
-              return item.href ? (
-                <Link key={item.label} href={item.href} className={cls} style={sty}>
-                  {inner}
-                </Link>
-              ) : (
-                <div key={item.label} className={cls} style={sty}>
-                  {inner}
-                </div>
+              if (item.href) return (
+                <Link key={item.label} href={item.href} className={cls} style={sty}>{inner}</Link>
               )
+              if (item.action === 'export') return (
+                <button key={item.label} onClick={() => setShowExport(true)} className={cls} style={sty}>{inner}</button>
+              )
+              return <div key={item.label} className={cls} style={sty}>{inner}</div>
             })}
           </div>
         </div>
@@ -265,6 +275,9 @@ export default function ProfilePage() {
           onClose={() => setShowAddAccount(false)}
           onAdded={() => { refreshAccounts(); setShowAddAccount(false) }}
         />
+      )}
+      {showExport && (
+        <ExportSheet onClose={() => setShowExport(false)} />
       )}
     </div>
   )
