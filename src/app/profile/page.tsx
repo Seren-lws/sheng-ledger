@@ -222,8 +222,8 @@ export default function ProfilePage() {
               const isActive = !!item.href || !!item.action
               const inner = (
                 <>
-                  <span className="text-lg w-7 text-center">{item.icon}</span>
-                  <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{item.label}</p>
+                  <span className="text-lg w-8 text-center flex-shrink-0 flex items-center justify-center">{item.icon}</span>
+                  <p className="flex-1 text-sm font-medium" style={{ color: 'var(--color-text)' }}>{item.label}</p>
                   {!isActive && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full"
                       style={{ background: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
