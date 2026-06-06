@@ -69,11 +69,11 @@ export function useFinancialContext(targetMonth?: dayjs.Dayjs) {
       if (t.type === 'income') {
         monthlyIncome += jpy
         const e = incMap.get(catName) ?? { name: catName, color: catColor, amount: 0 }
-        e.amount += jpy; incMap.set(catName, e)
+        e.color = catColor; e.amount += jpy; incMap.set(catName, e)
       } else {
         monthlyExpense += jpy
         const e = expMap.get(catName) ?? { name: catName, color: catColor, amount: 0 }
-        e.amount += jpy; expMap.set(catName, e)
+        e.color = catColor; e.amount += jpy; expMap.set(catName, e)
       }
 
       const a = accMap.get(accName) ?? { name: accName, color: accColor, count: 0, total: 0 }

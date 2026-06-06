@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { X, Plus, Pencil, Trash2, Check } from 'lucide-react'
+import { X, Plus, Pencil, Trash2, Check, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { TransactionType, Category } from '@/lib/types'
 
@@ -76,6 +76,18 @@ export default function CategoryManageSheet({ onClose }: Props) {
     fetchCategories()
   }
 
+  async function swapOrder(i: number, j: number) {
+    const a = categories[i] as Category & { sort_order?: number }
+    const b = categories[j] as Category & { sort_order?: number }
+    const aOrder = a.sort_order ?? i
+    const bOrder = b.sort_order ?? j
+    await Promise.all([
+      supabase.from('categories').update({ sort_order: bOrder }).eq('id', a.id),
+      supabase.from('categories').update({ sort_order: aOrder }).eq('id', b.id),
+    ])
+    fetchCategories()
+  }
+
   async function startDelete(id: string) {
     const { count } = await supabase
       .from('transactions')
@@ -140,7 +152,7 @@ export default function CategoryManageSheet({ onClose }: Props) {
             </p>
           ) : (
             <div className="space-y-1">
-              {categories.map(cat => (
+              {categories.map((cat, idx) => (
                 <div key={cat.id}>
                   {editId === cat.id ? (
                     /* 编辑模式 */
@@ -212,13 +224,23 @@ export default function CategoryManageSheet({ onClose }: Props) {
                     </div>
                   ) : (
                     /* 正常显示 */
-                    <div className="flex items-center gap-3 py-2.5 px-1">
+                    <div className="flex items-center gap-2 py-2.5 px-1">
                       <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: cat.color }} />
                       <p className="flex-1 text-sm" style={{ color: 'var(--color-text)' }}>{cat.name}</p>
-                      <button onClick={() => startEdit(cat)} className="p-1.5 rounded-lg active:opacity-60">
+                      <button onClick={() => idx > 0 && swapOrder(idx, idx - 1)}
+                        className="p-1 rounded-lg active:opacity-60"
+                        style={{ opacity: idx === 0 ? 0.2 : 1 }}>
+                        <ChevronUp size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      </button>
+                      <button onClick={() => idx < categories.length - 1 && swapOrder(idx, idx + 1)}
+                        className="p-1 rounded-lg active:opacity-60"
+                        style={{ opacity: idx === categories.length - 1 ? 0.2 : 1 }}>
+                        <ChevronDown size={14} style={{ color: 'var(--color-text-muted)' }} />
+                      </button>
+                      <button onClick={() => startEdit(cat)} className="p-1 rounded-lg active:opacity-60">
                         <Pencil size={13} style={{ color: 'var(--color-text-muted)' }} />
                       </button>
-                      <button onClick={() => startDelete(cat.id)} className="p-1.5 rounded-lg active:opacity-60">
+                      <button onClick={() => startDelete(cat.id)} className="p-1 rounded-lg active:opacity-60">
                         <Trash2 size={13} style={{ color: 'var(--color-text-muted)' }} />
                       </button>
                     </div>

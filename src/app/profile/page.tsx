@@ -12,6 +12,7 @@ import AccountDetailSheet from '@/components/profile/AccountDetailSheet'
 import AddAccountSheet from '@/components/profile/AddAccountSheet'
 import CategoryManageSheet from '@/components/profile/CategoryManageSheet'
 import TagManageSheet from '@/components/profile/TagManageSheet'
+import TransferSheet from '@/components/profile/TransferSheet'
 
 const ACCOUNT_ICONS: Record<string, string> = {
   'みずほ銀行': '🏦', 'PayPay': '📱', '现金-日元': '💴',
@@ -20,6 +21,7 @@ const ACCOUNT_ICONS: Record<string, string> = {
 
 const MENU_ITEMS = [
   { icon: '📌', label: '固定支出管理', href: '/fixed-expenses', action: null },
+  { icon: '💸', label: '账户转账', href: null, action: 'transfer' },
   { icon: '🗂️', label: '分类管理', href: null, action: 'category' },
   { icon: '🏷️', label: '标签管理', href: null, action: 'tag' },
   { icon: '📤', label: '数据导出', href: null, action: 'export' },
@@ -35,6 +37,7 @@ export default function ProfilePage() {
   const [showExport, setShowExport] = useState(false)
   const [showCategory, setShowCategory] = useState(false)
   const [showTag, setShowTag] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
 
   // 汇率编辑
   const [editingRate, setEditingRate] = useState(false)
@@ -242,6 +245,9 @@ export default function ProfilePage() {
               if (item.href) return (
                 <Link key={item.label} href={item.href} className={cls} style={sty}>{inner}</Link>
               )
+              if (item.action === 'transfer') return (
+                <button key={item.label} onClick={() => setShowTransfer(true)} className={cls} style={sty}>{inner}</button>
+              )
               if (item.action === 'export') return (
                 <button key={item.label} onClick={() => setShowExport(true)} className={cls} style={sty}>{inner}</button>
               )
@@ -295,6 +301,12 @@ export default function ProfilePage() {
       )}
       {showTag && (
         <TagManageSheet onClose={() => setShowTag(false)} />
+      )}
+      {showTransfer && (
+        <TransferSheet
+          onClose={() => setShowTransfer(false)}
+          onDone={() => { refreshAccounts(); setShowTransfer(false) }}
+        />
       )}
     </div>
   )
