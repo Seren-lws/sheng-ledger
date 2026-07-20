@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { getCategoryIcon } from '@/lib/category-icons'
 import { DEFAULT_TX_FILTER } from '@/lib/types'
 import type { TxWithRefs, TxFilter } from '@/lib/types'
+import { useExchangeRate } from '@/hooks/useExchangeRate'
 import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 import FilterPanel from '@/components/transactions/FilterPanel'
 import TxDetailSheet from '@/components/transactions/TxDetailSheet'
@@ -16,6 +17,11 @@ function fmtAmount(amount: number, currency: string) {
   return currency === 'JPY'
     ? `¥${Math.round(amount).toLocaleString()}`
     : `¥${Number(amount).toFixed(2)}`
+}
+
+// CNY → JPY（rate = 1 CNY 对应多少 JPY）
+function toJpy(amount: number, currency: string, rate: number) {
+  return currency === 'CNY' ? Number(amount) * rate : Number(amount)
 }
 
 // 计算本次请求的起止日
@@ -39,6 +45,7 @@ export default function TransactionsPage() {
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [selectedTx, setSelectedTx] = useState<TxWithRefs | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const { rate } = useExchangeRate()
 
   // ── 数据加载 ──
   const loadData = useCallback(async () => {
@@ -93,9 +100,10 @@ export default function TransactionsPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // ── 汇总 ──
-  const jpyExpense = rows.filter(t => t.type === 'expense' && t.currency === 'JPY').reduce((s, t) => s + Number(t.amount), 0)
-  const jpyIncome  = rows.filter(t => t.type === 'income'  && t.currency === 'JPY').reduce((s, t) => s + Number(t.amount), 0)
+  // ── 汇总（换算成日元后再加总）──
+  const r = rate ?? 20
+  const jpyExpense = rows.filter(t => t.type === 'expense').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
+  const jpyIncome  = rows.filter(t => t.type === 'income').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
 
   // ── 分组 ──
   const grouped = rows.reduce<Record<string, TxWithRefs[]>>((acc, tx) => {
@@ -281,9 +289,9 @@ export default function TransactionsPage() {
             const isToday = date === today
             const dayRows = grouped[date]
 
-            // 当天小计
-            const dayExpense = dayRows.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0)
-            const dayIncome  = dayRows.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0)
+            // 当天小计（换算成日元后再加总）
+            const dayExpense = dayRows.filter(t => t.type === 'expense').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
+            const dayIncome  = dayRows.filter(t => t.type === 'income').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
 
             return (
               <div key={date} className="mb-2">
