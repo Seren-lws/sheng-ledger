@@ -24,6 +24,13 @@ function toJpy(amount: number, currency: string, rate: number) {
   return currency === 'CNY' ? Number(amount) * rate : Number(amount)
 }
 
+// 换算成另一种币种的小字提示，如「≈ ¥123」「≈ ¥12.34」
+function fmtConverted(amount: number, currency: string, rate: number) {
+  return currency === 'JPY'
+    ? `≈ ¥${(Number(amount) / rate).toFixed(2)}`
+    : `≈ ¥${Math.round(Number(amount) * rate).toLocaleString()}`
+}
+
 // 计算本次请求的起止日
 function getRange(month: dayjs.Dayjs, filter: TxFilter) {
   if (filter.dateMode === 'week') {
@@ -379,6 +386,9 @@ export default function TransactionsPage() {
                           <p className="text-[15px] font-semibold"
                             style={{ color: isExpense ? 'var(--color-morandi-rose)' : 'var(--color-morandi-mint)' }}>
                             {isExpense ? '-' : '+'}{fmtAmount(tx.amount, currency)}
+                          </p>
+                          <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                            {fmtConverted(tx.amount, currency, r)}
                           </p>
                           {tx.account && (
                             <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
