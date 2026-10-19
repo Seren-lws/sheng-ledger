@@ -1,4 +1,23 @@
-# 声声记账本
+# Sheng Ledger — a calm bilingual finance companion for life in Japan
+
+> A personal finance PWA for people managing everyday life across Japan and China.
+
+Sheng Ledger starts from a concrete cross-cultural living problem: expenses are spread across JPY and CNY accounts, different payment channels, exchange rates, and unfamiliar local routines. The product combines natural-language expense capture, multi-currency visibility, savings tracking, and a gentle AI analysis layer without turning financial management into a judgmental dashboard.
+
+## Product thinking
+
+- Reduce the cost of recording an expense: describe it naturally and let AI structure the entry.
+- Make JPY/CNY context visible without forcing users to think like accountants.
+- Turn “recording money” into understanding daily life, saving patterns, and future choices.
+- Keep accuracy, privacy, mobile usability, and emotional tone in the same product conversation.
+
+## My role
+
+I independently led the user problem framing, product concept, interaction design, feature definition, AI interaction design, implementation, and iteration.
+
+## Status
+
+**Active · usable PWA**
 
 一款为个人定制的 PWA 记账应用，核心目标：**记得快、看得清、AI 帮你算**。
 
