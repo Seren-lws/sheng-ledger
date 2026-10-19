@@ -1,5 +1,6 @@
 /**
  * 记完一笔之后说什么：今天第几笔、今天花了多少；碰到里程碑来一次大庆祝。
+ * 当天的笔数 / 花费提前查好（fetchDayStats），存好之后直接算，不用再等一次网络。
  */
 import dayjs from 'dayjs'
 import { supabase } from './supabase'
@@ -8,6 +9,23 @@ import { currentStreak, isAutoFixed, STREAK_MILESTONES, COUNT_MILESTONES } from 
 import type { LedgerMode } from './types'
 
 export type Feedback = { text: string; sub?: string; kind: 'success' | 'milestone' }
+
+/** 某一天自己记了几笔、花了多少（日元），以及一共记过多少笔 */
+export type DayStats = { date: string; count: number; spentJpy: number; total: number }
+
+export async function fetchDayStats(date: string, rate: number): Promise<DayStats> {
+  const [{ data: dayTx }, { count: total }] = await Promise.all([
+    supabase.from('transactions').select('type, amount, currency, rate, note, fixed_expense_id').eq('date', date),
+    supabase.from('transactions').select('id', { count: 'exact', head: true }).is('fixed_expense_id', null),
+  ])
+  const mine = (dayTx ?? []).filter(t => !isAutoFixed(t))
+  return {
+    date,
+    count: mine.length,
+    spentJpy: mine.filter(t => t.type === 'expense').reduce((s, t) => s + toJpy(t.amount, t.currency, t.rate ?? rate), 0),
+    total: total ?? 0,
+  }
+}
 
 const STREAK_WORDS: Record<number, [string, string]> = {
   3:   ['连续记账 3 天！', '小习惯开始发芽了 🌱'],
@@ -27,13 +45,16 @@ const COUNT_WORDS: Record<number, string> = {
   1000: '一千笔！这是一本真正的生活日记了',
 }
 
-export async function recordFeedback(opts: {
+/**
+ * @param after 记完这一笔之后，那一天的笔数/花费和总笔数（转账不算笔数）
+ */
+export function buildFeedback(opts: {
   mode: LedgerMode
   date: string
   daysBefore: Set<string>   // 记这笔之前，记过账的日期
-  rate: number
-}): Promise<Feedback> {
-  const { mode, date, daysBefore, rate } = opts
+  after: DayStats | null
+}): Feedback {
+  const { mode, date, daysBefore, after: stats } = opts
   const today = dayjs().format('YYYY-MM-DD')
   const isToday = date === today
   const dayLabel = isToday ? '今天' : dayjs(date).format('M月D日')
@@ -55,19 +76,8 @@ export async function recordFeedback(opts: {
     return { text: '转好啦！', kind: 'success' }
   }
 
-  // 这一天自己记的账 + 总笔数
-  const [{ data: dayTx }, { count: total }] = await Promise.all([
-    supabase.from('transactions').select('type, amount, currency, rate, note, fixed_expense_id').eq('date', date),
-    supabase.from('transactions').select('id', { count: 'exact', head: true }).is('fixed_expense_id', null),
-  ])
-  const mine = (dayTx ?? []).filter(t => !isAutoFixed(t))
-  const n = mine.length
-  const spent = mine
-    .filter(t => t.type === 'expense')
-    .reduce((s, t) => s + toJpy(t.amount, t.currency, t.rate ?? rate), 0)
-
-  if (total && COUNT_MILESTONES.includes(total)) {
-    return { text: `第 ${total} 笔！`, sub: COUNT_WORDS[total] ?? '每一笔都是认真生活的痕迹', kind: 'milestone' }
+  if (stats && COUNT_MILESTONES.includes(stats.total)) {
+    return { text: `第 ${stats.total} 笔！`, sub: COUNT_WORDS[stats.total] ?? '每一笔都是认真生活的痕迹', kind: 'milestone' }
   }
 
   // 补上了以前空着的一天
@@ -75,15 +85,18 @@ export async function recordFeedback(opts: {
     return { text: '补上啦！', sub: `${dayLabel}那天也开花了 🌸`, kind: 'success' }
   }
 
+  const title = mode === 'income' ? '进账啦！' : '记好啦！'
+
   // 今天的第一笔，接上了连续天数
   if (filledEmptyDay && isToday && after >= 2) {
-    return { text: mode === 'income' ? '进账啦！' : '记好啦！', sub: `今天第一笔 · 连续第 ${after} 天 🌸`, kind: 'success' }
+    return { text: title, sub: `今天第一笔 · 连续第 ${after} 天 🌸`, kind: 'success' }
   }
 
-  if (mode === 'income') return { text: '进账啦！', sub: `${dayLabel}第 ${n} 笔`, kind: 'success' }
+  if (!stats) return { text: title, kind: 'success' }
+  if (mode === 'income') return { text: title, sub: `${dayLabel}第 ${stats.count} 笔`, kind: 'success' }
   return {
-    text: '记好啦！',
-    sub: `${dayLabel}第 ${n} 笔 · ${isToday ? '今天' : '那天'}一共花了 ¥${Math.round(spent).toLocaleString()}`,
+    text: title,
+    sub: `${dayLabel}第 ${stats.count} 笔 · ${isToday ? '今天' : '那天'}一共花了 ¥${Math.round(stats.spentJpy).toLocaleString()}`,
     kind: 'success',
   }
 }

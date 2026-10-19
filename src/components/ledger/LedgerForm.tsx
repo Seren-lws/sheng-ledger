@@ -24,7 +24,8 @@ import StreakBar from './StreakBar'
 import RecordCalendarSheet from './RecordCalendarSheet'
 import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 import { useRecordDays } from '@/hooks/useRecordDays'
-import { recordFeedback, type Feedback } from '@/lib/feedback'
+import { buildFeedback, fetchDayStats, type DayStats } from '@/lib/feedback'
+import { toJpy } from '@/lib/ledger'
 
 const TRANSFER_COLOR = '#94ACBE'
 
@@ -70,6 +71,14 @@ export default function LedgerForm() {
   const { rate } = useExchangeRate()
   const { days: recordDays, refresh: refreshRecordDays } = useRecordDays()
   const accountInitialized = useRef(false)
+
+  // 当前日期那天的笔数 / 花费，提前备好，存完马上就能说「今天第几笔」
+  const [dayStats, setDayStats] = useState<DayStats | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetchDayStats(date, rate ?? 20).then(s => { if (!cancelled) setDayStats(s) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [date, rate])
 
   useEffect(() => { setCategoryId(null) }, [type])
 
@@ -170,14 +179,21 @@ export default function LedgerForm() {
     setExpression(p => p.length >= 12 ? p : p + key)
   }
 
-  /** 存好之后：先亮对勾，再算「今天第几笔 / 有没有里程碑」，弹出对应的庆祝 */
-  async function celebrate() {
+  /** 存好之后：用提前备好的当天数据算出「今天第几笔 / 有没有里程碑」，马上弹出庆祝 */
+  function celebrate(amount: number) {
     setSuccess(true)
-    let fb: Feedback = { text: isTransfer ? '转好啦！' : mode === 'income' ? '进账啦！' : '记好啦！', kind: 'success' }
-    try {
-      fb = await recordFeedback({ mode, date, daysBefore: recordDays ?? new Set(), rate: rate ?? 20 })
-    } catch {}
+    // 把刚记的这一笔加进当天数据（转账不算笔数和花费）
+    const after: DayStats | null = dayStats && dayStats.date === date
+      ? isTransfer ? dayStats : {
+          date,
+          count: dayStats.count + 1,
+          spentJpy: dayStats.spentJpy + (mode === 'expense' ? toJpy(amount, selectedAccount?.currency ?? 'JPY', rate ?? 20) : 0),
+          total: dayStats.total + 1,
+        }
+      : null
+    const fb = buildFeedback({ mode, date, daysBefore: recordDays ?? new Set(), after })
     toast(fb.text, { kind: fb.kind, sub: fb.sub })
+    if (after) setDayStats(after)
     refreshRecordDays()
     setTimeout(() => {
       setSuccess(false)
@@ -207,7 +223,7 @@ export default function LedgerForm() {
       const res = await createTransfer({ fromId: fromAcc.id, toId: toAcc.id, fromAmount: amount, toAmount, note, date })
       setSubmitting(false)
       if (!res.ok) { toast(res.message, { kind: 'error' }); return }
-      celebrate()
+      celebrate(amount)
       return
     }
 
@@ -218,7 +234,7 @@ export default function LedgerForm() {
     })
     setSubmitting(false)
     if (!res.ok) { toast(res.message, { kind: 'error' }); return }
-    celebrate()
+    celebrate(amount)
   }
 
   return (
