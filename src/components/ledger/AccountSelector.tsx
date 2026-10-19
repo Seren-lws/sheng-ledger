@@ -1,4 +1,5 @@
 'use client'
+import { useEffect, useRef } from 'react'
 import type { Account } from '@/lib/types'
 
 interface Props {
@@ -13,6 +14,14 @@ const ACCOUNT_ICONS: Record<string, string> = {
 }
 
 export default function AccountSelector({ accounts, selectedId, onSelect }: Props) {
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({})
+
+  // 选中的账户如果在横滑区外面，自动滑进来，不会只露出半个
+  useEffect(() => {
+    if (!selectedId) return
+    refs.current[selectedId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  }, [selectedId, accounts.length])
+
   return (
     <div className="flex gap-2">
       {accounts.map(acc => {
@@ -20,6 +29,7 @@ export default function AccountSelector({ accounts, selectedId, onSelect }: Prop
         return (
           <button
             key={acc.id}
+            ref={el => { refs.current[acc.id] = el }}
             onClick={() => onSelect(acc.id)}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all"
             style={{

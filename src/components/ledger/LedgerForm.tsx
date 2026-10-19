@@ -267,7 +267,9 @@ export default function LedgerForm() {
                   inputMode="decimal"
                   value={toAmountDraft}
                   onChange={e => setToAmountDraft(e.target.value)}
-                  placeholder={`按汇率约 ${autoToAmount.toLocaleString()}，实际不一样可以改`}
+                  placeholder={autoToAmount > 0
+                    ? `按汇率约 ${autoToAmount.toLocaleString()}，实际不一样可以改`
+                    : '不填就按汇率自动算'}
                   className="flex-1 text-sm px-3 py-1.5 rounded-lg outline-none"
                   style={{ background: 'var(--color-border)', color: 'var(--color-text)' }}
                 />
