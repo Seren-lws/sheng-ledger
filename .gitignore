@@ -35,12 +35,14 @@ yarn-error.log*
 next-env.d.ts
 
 # PWA
-/public/sw.js
+# /public/sw.js 是手写的推送和离线缓存脚本，需要上传
 /public/workbox-*.js
 /public/worker-*.js
-/public/sw.js.map
 /public/workbox-*.js.map
 /public/worker-*.js.map
 
 # 本地数据备份（含个人账目，不上传）
 /backups/
+
+.vercel
+.env*

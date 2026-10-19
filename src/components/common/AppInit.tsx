@@ -2,6 +2,7 @@
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { generateFixedExpenses } from '@/lib/ledger'
+import { refreshPush } from '@/lib/push-client'
 import dayjs from 'dayjs'
 
 /**
@@ -14,7 +15,9 @@ export default function AppInit() {
   useEffect(() => {
     // Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => refreshPush())   // 已开过提醒的设备，顺手刷新推送登记
+        .catch(() => {})
     }
 
     // 账户排序（按偏好顺序）

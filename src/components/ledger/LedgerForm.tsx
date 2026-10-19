@@ -20,7 +20,11 @@ import DateQuickPicker from './DateQuickPicker'
 import DateSheet from './DateSheet'
 import SmartInput from './SmartInput'
 import BalanceNudge from './BalanceNudge'
+import StreakBar from './StreakBar'
+import RecordCalendarSheet from './RecordCalendarSheet'
 import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
+import { useRecordDays } from '@/hooks/useRecordDays'
+import { recordFeedback, type Feedback } from '@/lib/feedback'
 
 const TRANSFER_COLOR = '#94ACBE'
 
@@ -51,6 +55,7 @@ export default function LedgerForm() {
   const [showDateQuick, setShowDateQuick] = useState(false)
   const [showDateSheet, setShowDateSheet] = useState(false)
   const [showTagEdit, setShowTagEdit] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -63,6 +68,7 @@ export default function LedgerForm() {
   const { tags, refresh: refreshTags } = useTags()
   const { accounts, refresh: refreshAccounts } = useAccounts()
   const { rate } = useExchangeRate()
+  const { days: recordDays, refresh: refreshRecordDays } = useRecordDays()
   const accountInitialized = useRef(false)
 
   useEffect(() => { setCategoryId(null) }, [type])
@@ -78,10 +84,14 @@ export default function LedgerForm() {
     }
   }, [accounts])
 
-  // 从「我的 → 账户转账」进来时直接打开转账
+  // 从「我的 → 账户转账」进来时直接打开转账；从「补记昨天」的通知进来时日期切到昨天
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('mode') === 'transfer') startTransfer(params.get('to'))
+    const d = params.get('date')
+    if (d === 'yesterday') setDate(dayjs().subtract(1, 'day').format('YYYY-MM-DD'))
+    else if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setDate(d)
+    if (params.toString()) window.history.replaceState(null, '', '/')
   }, [])
 
   // 进入转账模式时，自动填上最可能的「从 → 到」（参考上一次转账）
@@ -160,9 +170,15 @@ export default function LedgerForm() {
     setExpression(p => p.length >= 12 ? p : p + key)
   }
 
-  function celebrate(text: string) {
+  /** 存好之后：先亮对勾，再算「今天第几笔 / 有没有里程碑」，弹出对应的庆祝 */
+  async function celebrate() {
     setSuccess(true)
-    toast(text)
+    let fb: Feedback = { text: isTransfer ? '转好啦！' : mode === 'income' ? '进账啦！' : '记好啦！', kind: 'success' }
+    try {
+      fb = await recordFeedback({ mode, date, daysBefore: recordDays ?? new Set(), rate: rate ?? 20 })
+    } catch {}
+    toast(fb.text, { kind: fb.kind, sub: fb.sub })
+    refreshRecordDays()
     setTimeout(() => {
       setSuccess(false)
       setExpression('')
@@ -176,7 +192,7 @@ export default function LedgerForm() {
   }
 
   async function handleSubmit() {
-    if (submitting) return
+    if (submitting || success) return   // 刚存好、还在庆祝时再点不会重复记
     const amount = evaluate(expression)
     if (amount <= 0) { toast('先输一下金额～', { kind: 'error' }); return }
 
@@ -191,7 +207,7 @@ export default function LedgerForm() {
       const res = await createTransfer({ fromId: fromAcc.id, toId: toAcc.id, fromAmount: amount, toAmount, note, date })
       setSubmitting(false)
       if (!res.ok) { toast(res.message, { kind: 'error' }); return }
-      celebrate('转好啦！')
+      celebrate()
       return
     }
 
@@ -202,7 +218,7 @@ export default function LedgerForm() {
     })
     setSubmitting(false)
     if (!res.ok) { toast(res.message, { kind: 'error' }); return }
-    celebrate('记好啦！')
+    celebrate()
   }
 
   return (
@@ -216,6 +232,13 @@ export default function LedgerForm() {
 
         {/* 有账户余额变负时提醒记转账 */}
         {!isTransfer && <BalanceNudge accounts={accounts} onTransfer={startTransfer} />}
+
+        {/* 连续记账天数 / 昨天空着提醒补记 */}
+        <StreakBar
+          days={recordDays}
+          onOpenCalendar={() => setShowCalendar(true)}
+          onBackfillYesterday={() => setDate(dayjs().subtract(1, 'day').format('YYYY-MM-DD'))}
+        />
 
         {/* 支出 / 收入 / 转账 切换 */}
         <TypeToggle value={mode} onChange={setMode} />
@@ -375,6 +398,13 @@ export default function LedgerForm() {
       {/* ── 弹层 ── */}
       {showDateSheet && (
         <DateSheet value={date} onChange={setDate} onClose={() => setShowDateSheet(false)} />
+      )}
+      {showCalendar && recordDays && (
+        <RecordCalendarSheet
+          days={recordDays}
+          onPick={d => { setDate(d); setShowCalendar(false) }}
+          onClose={() => setShowCalendar(false)}
+        />
       )}
       {showTagEdit && (
         <TagEditSheet
