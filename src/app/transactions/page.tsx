@@ -1,17 +1,24 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dayjs from 'dayjs'
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ArrowLeftRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getCategoryIcon } from '@/lib/category-icons'
+import { fetchTransfers } from '@/lib/ledger'
 import { DEFAULT_TX_FILTER } from '@/lib/types'
-import type { TxWithRefs, TxFilter } from '@/lib/types'
+import type { TxWithRefs, TxFilter, TransferWithRefs } from '@/lib/types'
 import { useExchangeRate } from '@/hooks/useExchangeRate'
 import ExchangeRateBanner from '@/components/common/ExchangeRateBanner'
 import FilterPanel from '@/components/transactions/FilterPanel'
 import TxDetailSheet from '@/components/transactions/TxDetailSheet'
+import TransferDetailSheet from '@/components/transactions/TransferDetailSheet'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+
+/** 明细里的一行：普通收支，或者账户间转账 */
+type Row =
+  | { kind: 'tx'; item: TxWithRefs }
+  | { kind: 'transfer'; item: TransferWithRefs }
 
 function fmtAmount(amount: number, currency: string) {
   return currency === 'JPY'
@@ -48,9 +55,11 @@ export default function TransactionsPage() {
   const [month, setMonth] = useState(dayjs().startOf('month'))
   const [filter, setFilter] = useState<TxFilter>(DEFAULT_TX_FILTER)
   const [rows, setRows] = useState<TxWithRefs[]>([])
+  const [transfers, setTransfers] = useState<TransferWithRefs[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [selectedTx, setSelectedTx] = useState<TxWithRefs | null>(null)
+  const [selectedTransfer, setSelectedTransfer] = useState<TransferWithRefs | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const { rate } = useExchangeRate()
 
@@ -62,7 +71,7 @@ export default function TransactionsPage() {
     let q = supabase
       .from('transactions')
       .select(`
-        id, type, amount, currency, note, date, created_at,
+        id, type, amount, currency, note, date, created_at, rate,
         category:categories(id, name, color),
         account:accounts(id, name, currency, color),
         transaction_tags(tags(id, name))
@@ -101,22 +110,41 @@ export default function TransactionsPage() {
       )
     }
 
+    // 转账：只在没按收支类型 / 分类 / 标签筛选时出现
+    let trs: TransferWithRefs[] = []
+    const transferVisible = filter.type === 'all' && filter.categoryIds.length === 0 && filter.tagIds.length === 0
+    if (transferVisible) {
+      trs = await fetchTransfers({ start, end, accountId: filter.accountId })
+      if (filter.search.trim()) {
+        const q3 = filter.search.toLowerCase()
+        trs = trs.filter(t =>
+          t.note?.toLowerCase().includes(q3) ||
+          t.from_account?.name.toLowerCase().includes(q3) ||
+          t.to_account?.name.toLowerCase().includes(q3)
+        )
+      }
+    }
+
     setRows(results)
+    setTransfers(trs)
     setLoading(false)
   }, [month, filter])
 
   useEffect(() => { loadData() }, [loadData])
 
-  // ── 汇总（换算成日元后再加总）──
+  // ── 汇总（换算成日元后再加总；每笔用它自己记账时的汇率，转账不算收支）──
   const r = rate ?? 20
-  const jpyExpense = rows.filter(t => t.type === 'expense').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
-  const jpyIncome  = rows.filter(t => t.type === 'income').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
+  const jpyOf = (t: TxWithRefs) => toJpy(t.amount, t.currency, t.rate ?? r)
+  const jpyExpense = rows.filter(t => t.type === 'expense').reduce((s, t) => s + jpyOf(t), 0)
+  const jpyIncome  = rows.filter(t => t.type === 'income').reduce((s, t) => s + jpyOf(t), 0)
 
-  // ── 分组 ──
-  const grouped = rows.reduce<Record<string, TxWithRefs[]>>((acc, tx) => {
-    ;(acc[tx.date] ??= []).push(tx)
-    return acc
-  }, {})
+  // ── 分组（同一天里按记录时间倒序）──
+  const grouped: Record<string, Row[]> = {}
+  for (const tx of rows) (grouped[tx.date] ??= []).push({ kind: 'tx', item: tx })
+  for (const tr of transfers) (grouped[tr.date] ??= []).push({ kind: 'transfer', item: tr })
+  for (const list of Object.values(grouped)) {
+    list.sort((a, b) => b.item.created_at.localeCompare(a.item.created_at))
+  }
   const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
 
   // ── 是否有生效的筛选（排除 search，它单独显示） ──
@@ -296,9 +324,10 @@ export default function TransactionsPage() {
             const isToday = date === today
             const dayRows = grouped[date]
 
-            // 当天小计（换算成日元后再加总）
-            const dayExpense = dayRows.filter(t => t.type === 'expense').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
-            const dayIncome  = dayRows.filter(t => t.type === 'income').reduce((s, t) => s + toJpy(t.amount, t.currency, r), 0)
+            // 当天小计（换算成日元后再加总，转账不算）
+            const dayTx = dayRows.flatMap(row => row.kind === 'tx' ? [row.item] : [])
+            const dayExpense = dayTx.filter(t => t.type === 'expense').reduce((s, t) => s + jpyOf(t), 0)
+            const dayIncome  = dayTx.filter(t => t.type === 'income').reduce((s, t) => s + jpyOf(t), 0)
 
             return (
               <div key={date} className="mb-2">
@@ -331,12 +360,51 @@ export default function TransactionsPage() {
 
                 {/* 当日账单卡片 */}
                 <div className="mx-4 rounded-2xl overflow-hidden" style={{ background: 'var(--color-card)' }}>
-                  {dayRows.map((tx, i) => {
+                  {dayRows.map((row, i) => {
+                    const last = i === dayRows.length - 1
+
+                    if (row.kind === 'transfer') {
+                      const tr = row.item
+                      const fromCur = tr.from_account?.currency ?? 'JPY'
+                      const toCur = tr.to_account?.currency ?? fromCur
+                      return (
+                        <button
+                          key={`tr-${tr.id}`}
+                          onClick={() => setSelectedTransfer(tr)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70 transition-opacity"
+                          style={{ borderBottom: last ? 'none' : '1px solid var(--color-border)' }}
+                        >
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: '#94ACBE20', color: 'var(--color-morandi-sky)' }}>
+                            <ArrowLeftRight size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium leading-snug truncate" style={{ color: 'var(--color-text)' }}>
+                              {tr.from_account?.name ?? '?'} → {tr.to_account?.name ?? '?'}
+                            </p>
+                            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
+                              {tr.note ?? '转账'}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-[15px] font-semibold" style={{ color: 'var(--color-morandi-sky)' }}>
+                              {fmtAmount(tr.from_amount, fromCur)}
+                            </p>
+                            {fromCur !== toCur && (
+                              <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                                到账 {fmtAmount(tr.to_amount, toCur)}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    }
+
+                    const tx = row.item
                     const cat = tx.category
                     const color = cat?.color ?? '#C4A09B'
                     const isExpense = tx.type === 'expense'
                     const currency = tx.account?.currency ?? tx.currency
-                    const last = i === dayRows.length - 1
 
                     // 最多显示 2 个标签
                     const visibleTags = tx.tags.slice(0, 2)
@@ -388,7 +456,7 @@ export default function TransactionsPage() {
                             {isExpense ? '-' : '+'}{fmtAmount(tx.amount, currency)}
                           </p>
                           <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                            {fmtConverted(tx.amount, currency, r)}
+                            {fmtConverted(tx.amount, currency, tx.rate ?? r)}
                           </p>
                           {tx.account && (
                             <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
@@ -420,6 +488,13 @@ export default function TransactionsPage() {
           onClose={() => setSelectedTx(null)}
           onDeleted={() => { setSelectedTx(null); loadData() }}
           onSaved={() => { setSelectedTx(null); loadData() }}
+        />
+      )}
+      {selectedTransfer && (
+        <TransferDetailSheet
+          transfer={selectedTransfer}
+          onClose={() => setSelectedTransfer(null)}
+          onChanged={() => { setSelectedTransfer(null); loadData() }}
         />
       )}
     </div>

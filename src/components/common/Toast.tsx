@@ -1,8 +1,10 @@
 'use client'
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
-type ToastItem = { id: number; text: string; phase: 'in' | 'out' }
-const ToastCtx = createContext<(text: string) => void>(() => {})
+type ToastKind = 'success' | 'error'
+type ToastItem = { id: number; text: string; phase: 'in' | 'out'; kind: ToastKind }
+type ShowToast = (text: string, opts?: { kind?: ToastKind }) => void
+const ToastCtx = createContext<ShowToast>(() => {})
 
 export function useToast() { return useContext(ToastCtx) }
 
@@ -22,11 +24,14 @@ const PARTICLES = Array.from({ length: 12 }, (_, i) => {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
-  const show = useCallback((text: string) => {
+  const show = useCallback<ShowToast>((text, opts) => {
     const id = Date.now()
-    setToasts(p => [...p, { id, text, phase: 'in' }])
-    setTimeout(() => setToasts(p => p.map(t => t.id === id ? { ...t, phase: 'out' } : t)), 1800)
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 2400)
+    const kind = opts?.kind ?? 'success'
+    // 出错的提示多停一会儿，让人看得清
+    const stay = kind === 'error' ? 3200 : 1800
+    setToasts(p => [...p, { id, text, phase: 'in', kind }])
+    setTimeout(() => setToasts(p => p.map(t => t.id === id ? { ...t, phase: 'out' } : t)), stay)
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), stay + 600)
   }, [])
 
   return (
@@ -35,33 +40,37 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
         {toasts.map(t => (
           <div key={t.id} className="relative flex flex-col items-center">
-            {/* 烟花粒子 */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {PARTICLES.map((p, i) => (
-                <span
-                  key={i}
-                  className="absolute rounded-full"
-                  style={{
-                    width: p.size,
-                    height: p.size,
-                    background: p.color,
-                    '--tx': `${p.tx}px`,
-                    '--ty': `${p.ty}px`,
-                    animation: t.phase === 'in'
-                      ? `particle-burst 0.6s ${p.delay}s ease-out forwards`
-                      : `particle-fade 0.5s ease-in forwards`,
-                    opacity: 0,
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
+            {/* 烟花粒子（只在成功时放） */}
+            {t.kind === 'success' && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                {PARTICLES.map((p, i) => (
+                  <span
+                    key={i}
+                    className="absolute rounded-full"
+                    style={{
+                      width: p.size,
+                      height: p.size,
+                      background: p.color,
+                      '--tx': `${p.tx}px`,
+                      '--ty': `${p.ty}px`,
+                      animation: t.phase === 'in'
+                        ? `particle-burst 0.6s ${p.delay}s ease-out forwards`
+                        : `particle-fade 0.5s ease-in forwards`,
+                      opacity: 0,
+                    } as React.CSSProperties}
+                  />
+                ))}
+              </div>
+            )}
             {/* 文字 */}
             <div
-              className={`relative px-6 py-3 rounded-2xl shadow-lg ${t.phase === 'in' ? 'animate-toast-pop' : 'animate-toast-bye'}`}
-              style={{ background: 'white', border: '2px solid #F0E6E4' }}
+              className={`relative mx-8 px-6 py-3 rounded-2xl shadow-lg ${t.phase === 'in' ? 'animate-toast-pop' : 'animate-toast-bye'}`}
+              style={{ background: 'white', border: `2px solid ${t.kind === 'error' ? '#E6E1EC' : '#F0E6E4'}` }}
             >
-              <span className="text-lg mr-1.5">🎉</span>
-              <span className="text-sm font-semibold" style={{ color: '#C4A09B' }}>{t.text}</span>
+              <span className="text-lg mr-1.5">{t.kind === 'error' ? '🌧️' : '🎉'}</span>
+              <span className="text-sm font-semibold" style={{ color: t.kind === 'error' ? '#7D7891' : '#C4A09B' }}>
+                {t.text}
+              </span>
             </div>
           </div>
         ))}

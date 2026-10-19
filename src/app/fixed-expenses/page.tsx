@@ -36,7 +36,7 @@ export default function FixedExpensesPage() {
     const end = dayjs().endOf('month').format('YYYY-MM-DD')
     supabase
       .from('transactions')
-      .select('amount, currency')
+      .select('amount, currency, rate')
       .eq('type', 'expense')
       .gte('date', start)
       .lte('date', end)
@@ -45,7 +45,7 @@ export default function FixedExpensesPage() {
         const safeRate = rate ?? 20
         const total = data.reduce((s: number, t: any) => {
           const amt = Number(t.amount)
-          return s + (t.currency === 'CNY' ? amt * safeRate : amt)
+          return s + (t.currency === 'CNY' ? amt * (t.rate ?? safeRate) : amt)
         }, 0)
         setMonthlyExpense(total)
       })

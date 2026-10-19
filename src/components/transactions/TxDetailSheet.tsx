@@ -4,7 +4,9 @@ import dayjs from 'dayjs'
 import { X, Trash2, Pencil, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getCategoryIcon } from '@/lib/category-icons'
-import type { TxWithRefs, Category, Account, Tag, TransactionType, Currency } from '@/lib/types'
+import { updateTransaction, deleteTransaction } from '@/lib/ledger'
+import { useToast } from '@/components/common/Toast'
+import type { TxWithRefs, Category, Account, Tag, TransactionType } from '@/lib/types'
 
 interface Props {
   tx: TxWithRefs
@@ -24,6 +26,7 @@ type EditState = {
 }
 
 export default function TxDetailSheet({ tx, onClose, onDeleted, onSaved }: Props) {
+  const toast = useToast()
   const [mode, setMode] = useState<'view' | 'edit' | 'confirm-delete'>('view')
   const [saving, setSaving] = useState(false)
 
@@ -54,76 +57,33 @@ export default function TxDetailSheet({ tx, onClose, onDeleted, onSaved }: Props
     })
   }, [mode, edit.type])
 
-  // ── 删除 ──
+  // ── 删除（余额一起退回去） ──
   async function handleDelete() {
     setSaving(true)
-    try {
-      // 回滚账户余额
-      if (tx.account) {
-        const { data: acc } = await supabase.from('accounts').select('balance').eq('id', tx.account.id).single()
-        if (acc) {
-          const rollback = tx.type === 'expense' ? Number(tx.amount) : -Number(tx.amount)
-          await supabase.from('accounts').update({ balance: Number(acc.balance) + rollback }).eq('id', tx.account.id)
-        }
-      }
-      await supabase.from('transactions').delete().eq('id', tx.id)
-      onDeleted()
-    } finally {
-      setSaving(false)
-    }
+    const res = await deleteTransaction(tx.id)
+    setSaving(false)
+    if (!res.ok) { toast(res.message, { kind: 'error' }); return }
+    onDeleted()
   }
 
-  // ── 保存编辑 ──
+  // ── 保存编辑（换账户时币种跟着新账户走） ──
   async function handleSave() {
     const newAmount = parseFloat(edit.amount)
-    if (isNaN(newAmount) || newAmount <= 0 || !edit.categoryId || !edit.accountId) return
+    if (isNaN(newAmount) || newAmount <= 0) { toast('金额要大于 0 哦', { kind: 'error' }); return }
+    if (!edit.categoryId || !edit.accountId) { toast('选一下分类和账户～', { kind: 'error' }); return }
     setSaving(true)
-
-    try {
-      const oldAccountId = tx.account?.id
-      const newAccountId = edit.accountId
-      const changed = oldAccountId !== newAccountId || Number(tx.amount) !== newAmount || tx.type !== edit.type
-
-      // 1. 回滚旧账户
-      if (changed && oldAccountId) {
-        const { data: oldAcc } = await supabase.from('accounts').select('balance').eq('id', oldAccountId).single()
-        if (oldAcc) {
-          const rollback = tx.type === 'expense' ? Number(tx.amount) : -Number(tx.amount)
-          await supabase.from('accounts').update({ balance: Number(oldAcc.balance) + rollback }).eq('id', oldAccountId)
-        }
-      }
-
-      // 2. 应用新账户
-      if (changed) {
-        const { data: newAcc } = await supabase.from('accounts').select('balance').eq('id', newAccountId).single()
-        if (newAcc) {
-          const delta = edit.type === 'expense' ? -newAmount : newAmount
-          await supabase.from('accounts').update({ balance: Number(newAcc.balance) + delta }).eq('id', newAccountId)
-        }
-      }
-
-      // 3. 更新 transaction
-      await supabase.from('transactions').update({
-        type: edit.type,
-        amount: newAmount,
-        category_id: edit.categoryId,
-        account_id: edit.accountId,
-        note: edit.note.trim() || null,
-        date: edit.date,
-      }).eq('id', tx.id)
-
-      // 4. 更新标签
-      await supabase.from('transaction_tags').delete().eq('transaction_id', tx.id)
-      if (edit.tagIds.length > 0) {
-        await supabase.from('transaction_tags').insert(
-          edit.tagIds.map(tagId => ({ transaction_id: tx.id, tag_id: tagId }))
-        )
-      }
-
-      onSaved()
-    } finally {
-      setSaving(false)
-    }
+    const res = await updateTransaction(tx.id, {
+      type: edit.type,
+      amount: newAmount,
+      categoryId: edit.categoryId,
+      accountId: edit.accountId,
+      note: edit.note,
+      date: edit.date,
+      tagIds: edit.tagIds,
+    })
+    setSaving(false)
+    if (!res.ok) { toast(res.message, { kind: 'error' }); return }
+    onSaved()
   }
 
   const color = tx.category?.color ?? '#C4A09B'

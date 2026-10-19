@@ -49,7 +49,7 @@ export function useFinancialContext(targetMonth?: dayjs.Dayjs) {
     // ── 当月交易 ──
     const { data: txs } = await supabase
       .from('transactions')
-      .select('type, amount, currency, account_id, category:categories(name,color), account:accounts(name,color)')
+      .select('type, amount, currency, rate, account_id, category:categories(name,color), account:accounts(name,color)')
       .gte('date', start).lte('date', end)
 
     let monthlyIncome = 0, monthlyExpense = 0
@@ -58,7 +58,7 @@ export function useFinancialContext(targetMonth?: dayjs.Dayjs) {
     const accMap = new Map<string, { name: string; color: string; count: number; total: number }>()
 
     for (const t of txs ?? []) {
-      const jpy = toJpy(t.amount, t.currency, rate)
+      const jpy = toJpy(t.amount, t.currency, t.rate ?? rate)
       const cat = Array.isArray(t.category) ? t.category[0] : t.category
       const acc = Array.isArray(t.account) ? t.account[0] : t.account
       const catName = (cat as any)?.name ?? '其他'
@@ -88,11 +88,11 @@ export function useFinancialContext(targetMonth?: dayjs.Dayjs) {
     const lStart = lastM.startOf('month').format('YYYY-MM-DD')
     const lEnd = lastM.endOf('month').format('YYYY-MM-DD')
     const { data: lastTxs } = await supabase
-      .from('transactions').select('type, amount, currency')
+      .from('transactions').select('type, amount, currency, rate')
       .gte('date', lStart).lte('date', lEnd)
     let lastMonthIncome = 0, lastMonthExpense = 0
     for (const t of lastTxs ?? []) {
-      const jpy = toJpy(t.amount, t.currency, rate)
+      const jpy = toJpy(t.amount, t.currency, t.rate ?? rate)
       if (t.type === 'income') lastMonthIncome += jpy; else lastMonthExpense += jpy
     }
 
@@ -103,11 +103,11 @@ export function useFinancialContext(targetMonth?: dayjs.Dayjs) {
       const s = m.startOf('month').format('YYYY-MM-DD')
       const e = m.endOf('month').format('YYYY-MM-DD')
       const { data: mt } = await supabase
-        .from('transactions').select('type, amount, currency')
+        .from('transactions').select('type, amount, currency, rate')
         .gte('date', s).lte('date', e)
       let inc = 0, exp = 0
       for (const t of mt ?? []) {
-        const jpy = toJpy(t.amount, t.currency, rate)
+        const jpy = toJpy(t.amount, t.currency, t.rate ?? rate)
         if (t.type === 'income') inc += jpy; else exp += jpy
       }
       trend.push({ month: m.format('YYYY-MM'), income: inc, expense: exp })

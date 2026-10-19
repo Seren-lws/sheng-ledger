@@ -3,6 +3,7 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import dayjs from 'dayjs'
 import type { Tag, Category, Account, TransactionType } from '@/lib/types'
+import { useToast } from '@/components/common/Toast'
 
 interface ParseResult {
   amount?: string
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function SmartInput({ tags, categories, accounts, onParsed }: Props) {
+  const toast = useToast()
   const [text, setText] = useState('')
   const [focused, setFocused] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -57,10 +59,14 @@ export default function SmartInput({ tags, categories, accounts, onParsed }: Pro
       if (data.note) result.note = data.note
       if (data.date) result.date = data.date
 
+      if (!result.amount && !result.categoryId && !result.accountId) {
+        toast('没太看懂这句，换个说法试试，或者直接手动记～', { kind: 'error' })
+        return
+      }
       onParsed(result)
       setText('')
     } catch {
-      // fallback: do nothing, user can still manually input
+      toast('AI 暂时没连上，先手动记一下吧～', { kind: 'error' })
     } finally {
       setLoading(false)
     }

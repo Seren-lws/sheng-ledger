@@ -55,13 +55,13 @@ async function getMonthSummary(
 ): Promise<Omit<MonthSummary, 'month'>> {
   const { data } = await supabase
     .from('transactions')
-    .select('type, amount, currency')
+    .select('type, amount, currency, rate')
     .gte('date', start)
     .lte('date', end)
 
   let income = 0, expense = 0
   for (const t of data ?? []) {
-    const jpy = toJpy(t.amount, t.currency, rate)
+    const jpy = toJpy(t.amount, t.currency, t.rate ?? rate)
     if (t.type === 'income') income += jpy; else expense += jpy
   }
   const net = income - expense

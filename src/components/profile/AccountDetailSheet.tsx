@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import dayjs from 'dayjs'
-import { X, Trash2, Check } from 'lucide-react'
+import { X, Trash2, Check, ArrowLeftRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getCategoryIcon } from '@/lib/category-icons'
+import { fetchTransfers } from '@/lib/ledger'
 import type { Account } from '@/lib/types'
 
 const MORANDI_PALETTE = [
@@ -21,12 +22,14 @@ type RawCategory = { name: string; color: string }
 
 type RecentTx = {
   id: string
-  type: 'expense' | 'income'
+  type: 'expense' | 'income' | 'transfer-in' | 'transfer-out'
   amount: number
   currency: string
   date: string
+  created_at: string
   note: string | null
   category: RawCategory | null
+  otherAccount?: string   // 转账的另一头
 }
 
 export default function AccountDetailSheet({ account, onClose, onUpdated }: Props) {
@@ -39,16 +42,19 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
   const [recentTx, setRecentTx] = useState<RecentTx[]>([])
 
   const load = useCallback(async () => {
-    const [{ count }, { data }] = await Promise.all([
+    const [{ count }, { count: trCount }, { data }, transfers] = await Promise.all([
       supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('account_id', account.id),
+      supabase.from('transfers').select('id', { count: 'exact', head: true })
+        .or(`from_account_id.eq.${account.id},to_account_id.eq.${account.id}`),
       supabase.from('transactions')
-        .select('id, type, amount, currency, date, note, category:categories(name,color)')
+        .select('id, type, amount, currency, date, created_at, note, category:categories(name,color)')
         .eq('account_id', account.id)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(8),
+      fetchTransfers({ accountId: account.id, limit: 8 }),
     ])
-    setTxCount(count ?? 0)
+    setTxCount((count ?? 0) + (trCount ?? 0))
     // Supabase 关联查询可能返回数组（一对多推断），归一化为单对象
     const normalized: RecentTx[] = (data ?? []).map((item: any) => ({
       id: item.id,
@@ -56,13 +62,30 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
       amount: item.amount,
       currency: item.currency,
       date: item.date,
+      created_at: item.created_at,
       note: item.note ?? null,
       category: Array.isArray(item.category)
         ? (item.category[0] as RawCategory ?? null)
         : (item.category as RawCategory ?? null),
     }))
-    setRecentTx(normalized)
-  }, [account.id])
+    // 转账也算这个账户的流水：转出是减，转入是加
+    for (const t of transfers) {
+      const out = t.from_account?.id === account.id
+      normalized.push({
+        id: `tr-${t.id}`,
+        type: out ? 'transfer-out' : 'transfer-in',
+        amount: out ? t.from_amount : t.to_amount,
+        currency: account.currency,
+        date: t.date,
+        created_at: t.created_at,
+        note: t.note,
+        category: null,
+        otherAccount: (out ? t.to_account?.name : t.from_account?.name) ?? '?',
+      })
+    }
+    normalized.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+    setRecentTx(normalized.slice(0, 8))
+  }, [account.id, account.currency])
 
   useEffect(() => { load() }, [load])
 
@@ -190,18 +213,22 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
               ) : (
                 <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
                   {recentTx.map((tx, i) => {
-                    const color = tx.category?.color ?? '#C4A09B'
+                    const isTransfer = tx.type === 'transfer-in' || tx.type === 'transfer-out'
+                    const color = isTransfer ? '#94ACBE' : tx.category?.color ?? '#C4A09B'
+                    const minus = tx.type === 'expense' || tx.type === 'transfer-out'
                     const last = i === recentTx.length - 1
                     return (
                       <div key={tx.id} className="flex items-center gap-3 px-3 py-2.5"
                         style={{ borderBottom: last ? 'none' : '1px solid var(--color-border)' }}>
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: `${color}20`, color }}>
-                          {getCategoryIcon(tx.category?.name, 14)}
+                          {isTransfer ? <ArrowLeftRight size={14} /> : getCategoryIcon(tx.category?.name, 14)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium" style={{ color: 'var(--color-text)' }}>
-                            {tx.category?.name ?? '未知'}
+                            {tx.type === 'transfer-out' ? `转出 → ${tx.otherAccount}`
+                              : tx.type === 'transfer-in' ? `转入 ← ${tx.otherAccount}`
+                              : tx.category?.name ?? '未知'}
                           </p>
                           {tx.note && (
                             <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>
@@ -211,8 +238,8 @@ export default function AccountDetailSheet({ account, onClose, onUpdated }: Prop
                         </div>
                         <div className="text-right">
                           <p className="text-xs font-semibold"
-                            style={{ color: tx.type === 'expense' ? 'var(--color-morandi-rose)' : 'var(--color-morandi-mint)' }}>
-                            {tx.type === 'expense' ? '-' : '+'}{fmtAmt(tx.amount, tx.currency)}
+                            style={{ color: isTransfer ? 'var(--color-morandi-sky)' : minus ? 'var(--color-morandi-rose)' : 'var(--color-morandi-mint)' }}>
+                            {minus ? '-' : '+'}{fmtAmt(tx.amount, tx.currency)}
                           </p>
                           <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
                             {dayjs(tx.date).format('M/D')}

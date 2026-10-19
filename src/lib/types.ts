@@ -1,5 +1,7 @@
 export type Currency = 'JPY' | 'CNY'
 export type TransactionType = 'income' | 'expense'
+/** 记一笔页面的三种模式 */
+export type LedgerMode = TransactionType | 'transfer'
 
 export interface Account {
   id: string
@@ -65,9 +67,24 @@ export type TxWithRefs = {
   note: string | null
   date: string
   created_at: string
+  rate: number | null   // 记账当时的汇率（1 CNY = ? JPY）
   category: { id: string; name: string; color: string } | null
   account: { id: string; name: string; currency: Currency; color: string } | null
   tags: { id: string; name: string }[]
+}
+
+type AccountRef = { id: string; name: string; currency: Currency; color: string }
+
+/** 账户间转账 — 不算收入也不算支出 */
+export type TransferWithRefs = {
+  id: string
+  from_amount: number   // 转出账户的币种
+  to_amount: number     // 转入账户的币种
+  note: string | null
+  date: string
+  created_at: string
+  from_account: AccountRef | null
+  to_account: AccountRef | null
 }
 
 export interface TxFilter {
